@@ -15,7 +15,9 @@ data class CreatePostState(
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
     val error: String? = null,
-    val imageUri: Uri? = null
+    val imageUri: Uri? = null,
+    val selectedTags: List<String> = emptyList(),
+    val backgroundColor: String = ""
 )
 
 class CreatePostViewModel : ViewModel() {
@@ -32,8 +34,22 @@ class CreatePostViewModel : ViewModel() {
         state = state.copy(imageUri = null)
     }
 
+    fun toggleTag(tag: String) {
+        val current = state.selectedTags.toMutableList()
+        if (tag in current) current.remove(tag) else current.add(tag)
+        state = state.copy(selectedTags = current)
+    }
+
+    fun setBackgroundColor(color: String) {
+        state = state.copy(backgroundColor = if (state.backgroundColor == color) "" else color)
+    }
+
     fun createPost(content: String, context: Context) {
         if (content.isBlank() && state.imageUri == null) return
+        if (state.selectedTags.isEmpty()) {
+            state = state.copy(error = "Please select at least one domain tag")
+            return
+        }
 
         viewModelScope.launch {
             state = state.copy(isLoading = true, error = null)
@@ -47,7 +63,7 @@ class CreatePostViewModel : ViewModel() {
                 }
             }
 
-            repo.createPost(content, base64)
+            repo.createPost(content, base64, state.selectedTags, state.backgroundColor)
                 .onSuccess { state = state.copy(isLoading = false, isSuccess = true) }
                 .onFailure { state = state.copy(isLoading = false, error = it.message) }
         }
