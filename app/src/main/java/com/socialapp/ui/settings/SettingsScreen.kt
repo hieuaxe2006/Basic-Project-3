@@ -10,12 +10,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     viewModel: SettingsViewModel = viewModel()
 ) {
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -41,7 +44,11 @@ fun SettingsScreen(
             
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("Premium Account", modifier = Modifier.weight(1f))
-                Switch(checked = viewModel.isPremium, onCheckedChange = { viewModel.togglePremium(it) })
+                Switch(checked = viewModel.isPremium, onCheckedChange = { 
+                    viewModel.togglePremium(it)
+                    val status = if(it) "upgraded to Premium" else "downgraded to Free"
+                    Toast.makeText(context, "Account $status", Toast.LENGTH_SHORT).show()
+                })
             }
             HorizontalDivider()
             
@@ -53,7 +60,9 @@ fun SettingsScreen(
             HorizontalDivider()
             
             Text("Post Settings", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 16.dp, bottom = 16.dp))
-            TextButton(onClick = {}) {
+            TextButton(onClick = {
+                Toast.makeText(context, "Feature coming soon!", Toast.LENGTH_SHORT).show()
+            }) {
                 Text("Manage Saved Posts")
             }
         }

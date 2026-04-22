@@ -13,7 +13,12 @@ class PostRepository {
 
     val currentUid get() = auth.currentUser?.uid
 
-    suspend fun createPost(content: String, imageBase64: String?): Result<Unit> = runCatching {
+    suspend fun createPost(
+        content: String,
+        imageBase64: String?,
+        tags: List<String> = emptyList(),
+        backgroundColor: String = ""
+    ): Result<Unit> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
 
         var imageUrl = ""
@@ -27,7 +32,9 @@ class PostRepository {
             user_id = uid,
             content = content,
             image_url = imageUrl,
-            created_at = Timestamp.now()
+            created_at = Timestamp.now(),
+            tags = tags,
+            background_color = backgroundColor
         )
         docRef.set(post).await()
     }

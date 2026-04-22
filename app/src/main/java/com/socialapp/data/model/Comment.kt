@@ -7,5 +7,7 @@ data class Comment(
     val post_id: String = "",
     val user_id: String = "",
     val content: String = "",
-    val created_at: Timestamp = Timestamp.now()
+    val created_at: Timestamp = Timestamp.now(),
+    val parent_id: String = "",
+    val like_count: Int = 0
 )

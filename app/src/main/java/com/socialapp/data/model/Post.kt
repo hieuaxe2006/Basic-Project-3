@@ -9,5 +9,7 @@ data class Post(
     val image_url: String = "",
     val created_at: Timestamp = Timestamp.now(),
     val like_count: Int = 0,
-    val comment_count: Int = 0
+    val comment_count: Int = 0,
+    val tags: List<String> = emptyList(),
+    val background_color: String = ""
 )

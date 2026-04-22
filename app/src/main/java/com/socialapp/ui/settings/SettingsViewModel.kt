@@ -24,14 +24,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         private set
 
     init {
-        loadPremiumStatus()
+        loadUserSettings()
     }
 
-    private fun loadPremiumStatus() {
+    private fun loadUserSettings() {
         viewModelScope.launch {
             val uid = repo.currentUid ?: return@launch
             val user = repo.getUser(uid)
             isPremium = user?.is_premium ?: false
+            privateAccount = user?.is_private ?: prefs.getBoolean("private_account", false)
         }
     }
 
@@ -41,8 +42,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun togglePrivateAccount(enabled: Boolean) {
-        privateAccount = enabled
-        prefs.edit().putBoolean("private_account", enabled).apply()
+        viewModelScope.launch {
+            val originalState = privateAccount
+            privateAccount = enabled
+            prefs.edit().putBoolean("private_account", enabled).apply()
+            repo.updatePrivateStatus(enabled).onFailure {
+                privateAccount = originalState
+                prefs.edit().putBoolean("private_account", originalState).apply()
+            }
+        }
     }
 
     fun togglePremium(enabled: Boolean) {

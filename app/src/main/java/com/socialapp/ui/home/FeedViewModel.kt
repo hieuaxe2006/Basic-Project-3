@@ -15,6 +15,8 @@ data class FeedState(
     val userMap: Map<String, User> = emptyMap(),
     val recommendedUsers: List<User> = emptyList(),
     val likedIds: Set<String> = emptySet(),
+    val savedIds: Set<String> = emptySet(),
+    val followingIds: Set<String> = emptySet(),
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -25,7 +27,29 @@ class FeedViewModel : ViewModel() {
     var state by mutableStateOf(FeedState())
         private set
 
-    init { loadFeed() }
+    val currentUid get() = repo.currentUid
+
+    init {
+        loadFeed()
+        observeSavedPosts()
+        observeFollowing()
+    }
+
+    private fun observeSavedPosts() {
+        viewModelScope.launch {
+            repo.getSavedPostIdsFlow().collect { ids ->
+                state = state.copy(savedIds = ids)
+            }
+        }
+    }
+
+    private fun observeFollowing() {
+        viewModelScope.launch {
+            repo.getFollowingIdsFlow().collect { ids ->
+                state = state.copy(followingIds = ids)
+            }
+        }
+    }
 
     fun loadFeed() {
         viewModelScope.launch {
@@ -38,9 +62,9 @@ class FeedViewModel : ViewModel() {
                         repo.getUser(uid)?.let { userMap[uid] = it }
                     }
                     val likedIds = repo.getLikedPostIds(posts.map { it.id })
-                    
+
                     val recommendedResult = repo.getRecommendedUsers().getOrDefault(emptyList())
-                    
+
                     state = state.copy(
                         isLoading = false,
                         posts = posts,
@@ -69,6 +93,18 @@ class FeedViewModel : ViewModel() {
                     }
                     state = state.copy(posts = updatedPosts, likedIds = updatedLikedIds)
                 }
+        }
+    }
+
+    fun toggleSave(postId: String) {
+        viewModelScope.launch {
+            repo.toggleSavePost(postId)
+        }
+    }
+
+    fun toggleFollow(targetUid: String) {
+        viewModelScope.launch {
+            repo.toggleFollow(targetUid)
         }
     }
 }

@@ -20,6 +20,8 @@ class ExploreViewModel : ViewModel() {
     var state by mutableStateOf(ExploreState())
         private set
 
+    private val fixedDomains = listOf("Code", "Life", "Study", "Animal", "Food", "Exercise", "Music", "Travel")
+
     init {
         loadCategories()
     }
@@ -27,10 +29,11 @@ class ExploreViewModel : ViewModel() {
     private fun loadCategories() {
         viewModelScope.launch {
             state = state.copy(isLoading = true, error = null)
-            repo.getHashtagCounts()
+            repo.getDomainCounts()
                 .onSuccess { map ->
-                    val categories = map.entries.map { Category(it.key, it.value) }
-                        .sortedByDescending { it.postCount }
+                    val categories = fixedDomains.map { name ->
+                        Category(name, map.getOrDefault(name, 0))
+                    }
                     state = state.copy(isLoading = false, categories = categories)
                 }
                 .onFailure { 

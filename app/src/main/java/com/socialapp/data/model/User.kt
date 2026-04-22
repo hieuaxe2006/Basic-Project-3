@@ -8,5 +8,6 @@ data class User(
     val bio: String = "",
     val followers_count: Int = 0,
     val following_count: Int = 0,
-    val is_premium: Boolean = false
+    val is_premium: Boolean = false,
+    val is_private: Boolean = false
 )
