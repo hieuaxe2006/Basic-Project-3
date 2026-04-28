@@ -1,5 +1,6 @@
 package com.socialapp.ui.home
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -11,7 +12,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -41,129 +41,228 @@ fun PostItem(
     onSave: () -> Unit = {},
     onFollow: () -> Unit = {}
 ) {
+    // Card: white background (#FFFFFF), border #DADDE1, rounded 12px
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        shape = RoundedCornerShape(12.dp)
+            .padding(horizontal = 0.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(0.dp), // Facebook-style full-width cards
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.5.dp
+        ),
+        border = BorderStroke(
+            width = 0.5.dp,
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+        )
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+
+            // ===== Header: Avatar + Name + Time + Follow =====
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.clickable { onUserClick(post.user_id) }
             ) {
+                // Avatar - 40dp circle
                 if (user?.avatar?.isNotBlank() == true) {
                     AsyncImage(
                         model = user.avatar,
                         contentDescription = null,
-                        modifier = Modifier.size(36.dp).clip(CircleShape),
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape),
                         contentScale = ContentScale.Crop
                     )
                 } else {
                     Surface(
-                        modifier = Modifier.size(36.dp),
+                        modifier = Modifier.size(40.dp),
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
                                 user?.username?.take(1)?.uppercase() ?: "?",
-                                style = MaterialTheme.typography.titleSmall
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
                 }
-                Spacer(Modifier.width(8.dp))
+
+                Spacer(Modifier.width(10.dp))
+
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(user?.username ?: "Unknown", fontWeight = FontWeight.SemiBold)
+                    // Username - bold, text primary color
+                    Text(
+                        text = user?.username ?: "Unknown",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    // Timestamp - text secondary color, 13px
                     Text(
                         text = formatRelativeTime(post.created_at),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
+                // Follow button - primary style per design system
                 if (!isOwnPost) {
-                    Spacer(Modifier.width(8.dp))
                     if (isFollowing) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Following",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Following",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    "Following",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     } else {
-                        Text(
-                            text = "Follow",
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier.clickable { onFollow() }.padding(4.dp)
-                        )
+                        // Follow button - 8px radius, primary style
+                        TextButton(
+                            onClick = onFollow,
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = MaterialTheme.colorScheme.primary
+                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "Follow",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
             }
 
+            // ===== Content =====
             if (post.content.isNotBlank()) {
-                Spacer(Modifier.height(8.dp))
-                Text(post.content, style = MaterialTheme.typography.bodyLarge)
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = post.content,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
 
+            // ===== Image =====
             if (post.image_url.isNotBlank()) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
                 AsyncImage(
                     model = post.image_url,
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 300.dp)
+                        .heightIn(max = 320.dp)
                         .clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Crop
                 )
             }
 
+            // ===== Tags =====
             if (post.tags.isNotEmpty()) {
-                Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     post.tags.take(4).forEach { tag ->
                         SuggestionChip(
                             onClick = {},
-                            label = { Text(tag, style = MaterialTheme.typography.labelSmall) },
-                            modifier = Modifier.height(24.dp)
+                            label = {
+                                Text(
+                                    tag,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            modifier = Modifier.height(26.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            border = SuggestionChipDefaults.suggestionChipBorder(
+                                enabled = true,
+                                borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                            ),
+                            colors = SuggestionChipDefaults.suggestionChipColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                            )
                         )
                     }
                 }
             }
 
+            // ===== Stats row (like count, comment count) =====
             Spacer(Modifier.height(8.dp))
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                thickness = 0.5.dp
+            )
 
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            // ===== Action buttons =====
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp)
+            ) {
+                // Like button
                 IconButton(onClick = onLike) {
                     Icon(
                         if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = "Like",
-                        tint = if (isLiked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                        tint = if (isLiked) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
-                Text("${post.like_count}", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "${post.like_count}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(8.dp))
 
+                // Comment button
                 IconButton(onClick = onComment) {
-                    Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = "Comment")
+                    Icon(
+                        Icons.Outlined.ChatBubbleOutline,
+                        contentDescription = "Comment",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
-                Text("${post.comment_count}", style = MaterialTheme.typography.bodySmall)
-
-                Spacer(Modifier.width(16.dp))
-
-                Spacer(Modifier.width(16.dp))
+                Text(
+                    "${post.comment_count}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
                 Spacer(Modifier.weight(1f))
 
+                // Save/Bookmark button
                 IconButton(onClick = onSave) {
                     Icon(
                         if (isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                         contentDescription = "Save",
-                        tint = if (isSaved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        tint = if (isSaved) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
