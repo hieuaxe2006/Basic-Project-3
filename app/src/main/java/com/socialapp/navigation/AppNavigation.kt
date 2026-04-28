@@ -24,6 +24,8 @@ import com.socialapp.ui.profile.ProfileViewModel
 import com.socialapp.ui.explore.ExploreScreen
 import com.socialapp.ui.search.SearchScreen
 import com.socialapp.ui.settings.SettingsScreen
+import com.socialapp.ui.admin.AdminDashboardScreen
+import com.socialapp.ui.admin.AdminViewModel
 
 @Composable
 fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
@@ -32,151 +34,81 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
 
     NavHost(navController = navController, startDestination = startDest) {
         composable(Screen.Login.route) {
-            LoginScreen(
-                viewModel = authViewModel,
-                onNavigateToRegister = {
-                    navController.navigate(Screen.Register.route) {
-                        launchSingleTop = true
-                    }
-                }
-            )
+            LoginScreen(viewModel = authViewModel, onNavigateToRegister = {
+                navController.navigate(Screen.Register.route) { launchSingleTop = true }
+            })
         }
 
         composable(Screen.Register.route) {
-            RegisterScreen(
-                viewModel = authViewModel,
-                onNavigateToLogin = {
-                    navController.popBackStack()
-                }
-            )
+            RegisterScreen(viewModel = authViewModel, onNavigateToLogin = { navController.popBackStack() })
         }
 
         composable(Screen.Home.route) {
             HomeScreen(
                 onLogout = {
                     authViewModel.logout()
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(0) { inclusive = true }
-                    }
+                    navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } }
                 },
-                onNavigateToProfile = { uid ->
-                    navController.navigate(Screen.Profile.createRoute(uid))
-                },
-                onNavigateToCreatePost = {
-                    navController.navigate(Screen.CreatePost.route)
-                },
-                onNavigateToComments = { postId ->
-                    navController.navigate(Screen.Comments.createRoute(postId))
-                },
-                onNavigateToChat = {
-                    navController.navigate(Screen.ChatList.route)
-                },
-                onNavigateToExplore = {
-                    navController.navigate(Screen.Explore.route)
-                },
-                onNavigateToSettings = {
-                    navController.navigate(Screen.Settings.route)
-                },
-                onNavigateToSearch = { query ->
-                    navController.navigate(Screen.Search.createRoute(query))
-                }
+                onNavigateToProfile = { uid -> navController.navigate(Screen.Profile.createRoute(uid)) },
+                onNavigateToCreatePost = { navController.navigate(Screen.CreatePost.route) },
+                onNavigateToComments = { postId -> navController.navigate(Screen.Comments.createRoute(postId)) },
+                onNavigateToChat = { navController.navigate(Screen.ChatList.route) },
+                onNavigateToExplore = { navController.navigate(Screen.Explore.route) },
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToSearch = { query -> navController.navigate(Screen.Search.createRoute(query)) },
+                onNavigateToAdmin = { navController.navigate(Screen.Admin.route) }
             )
         }
 
         composable(Screen.CreatePost.route) {
             val createPostViewModel: CreatePostViewModel = viewModel()
-            CreatePostScreen(
-                viewModel = createPostViewModel,
-                onBack = { navController.popBackStack() },
-                onPostCreated = { navController.popBackStack() }
-            )
+            CreatePostScreen(viewModel = createPostViewModel, onBack = { navController.popBackStack() }, onPostCreated = { navController.popBackStack() })
         }
 
-        composable(
-            route = Screen.Comments.route,
-            arguments = listOf(navArgument("postId") { type = NavType.StringType })
-        ) { backStackEntry ->
+        composable(route = Screen.Comments.route, arguments = listOf(navArgument("postId") { type = NavType.StringType })) { backStackEntry ->
             val postId = backStackEntry.arguments?.getString("postId") ?: return@composable
             val commentViewModel: CommentViewModel = viewModel()
-            CommentScreen(
-                postId = postId,
-                viewModel = commentViewModel,
-                onBack = { navController.popBackStack() }
-            )
+            CommentScreen(postId = postId, viewModel = commentViewModel, onBack = { navController.popBackStack() })
         }
 
         composable(Screen.ChatList.route) {
             val chatListViewModel: ChatListViewModel = viewModel()
-            ChatListScreen(
-                viewModel = chatListViewModel,
-                onBack = { navController.popBackStack() },
-                onOpenChat = { uid, name ->
-                    navController.navigate(Screen.Chat.createRoute(uid, name))
-                }
-            )
+            ChatListScreen(viewModel = chatListViewModel, onBack = { navController.popBackStack() }, onOpenChat = { uid, name ->
+                navController.navigate(Screen.Chat.createRoute(uid, name))
+            })
         }
 
-        composable(
-            route = Screen.Chat.route,
-            arguments = listOf(
-                navArgument("uid") { type = NavType.StringType },
-                navArgument("name") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
+        composable(route = Screen.Chat.route, arguments = listOf(navArgument("uid") { type = NavType.StringType }, navArgument("name") { type = NavType.StringType })) { backStackEntry ->
             val uid = backStackEntry.arguments?.getString("uid") ?: return@composable
             val name = backStackEntry.arguments?.getString("name") ?: ""
             val chatViewModel: ChatViewModel = viewModel()
-            ChatScreen(
-                otherUid = uid,
-                otherName = name,
-                viewModel = chatViewModel,
-                onBack = { navController.popBackStack() }
-            )
+            ChatScreen(otherUid = uid, otherName = name, viewModel = chatViewModel, onBack = { navController.popBackStack() })
         }
 
-        composable(
-            route = Screen.Profile.route,
-            arguments = listOf(navArgument("uid") { type = NavType.StringType; nullable = true; defaultValue = null })
-        ) { backStackEntry ->
+        composable(route = Screen.Profile.route, arguments = listOf(navArgument("uid") { type = NavType.StringType; nullable = true; defaultValue = null })) { backStackEntry ->
             val uid = backStackEntry.arguments?.getString("uid")
             val profileViewModel: ProfileViewModel = viewModel()
-            ProfileScreen(
-                viewModel = profileViewModel,
-                uid = uid,
-                onBack = { navController.popBackStack() }
-            )
+            ProfileScreen(viewModel = profileViewModel, uid = uid, onBack = { navController.popBackStack() })
         }
 
-        composable(Screen.Explore.route) {
-            ExploreScreen(
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
+        composable(Screen.Explore.route) { ExploreScreen(onNavigateBack = { navController.popBackStack() }) }
 
         composable(Screen.Settings.route) {
-            SettingsScreen(
-                onBack = { navController.popBackStack() }
-            )
+            SettingsScreen(onBack = { navController.popBackStack() }, onNavigateToAdmin = { navController.navigate(Screen.Admin.route) })
         }
 
-        composable(
-            route = Screen.Search.route,
-            arguments = listOf(navArgument("query") { type = NavType.StringType })
-        ) { backStackEntry ->
+        composable(route = Screen.Search.route, arguments = listOf(navArgument("query") { type = NavType.StringType })) { backStackEntry ->
             val query = backStackEntry.arguments?.getString("query") ?: ""
-            SearchScreen(
-                query = query,
-                onNavigateToProfile = { uid ->
-                    navController.navigate(Screen.Profile.createRoute(uid))
-                },
-                onNavigateBack = { navController.popBackStack() }
-            )
+            SearchScreen(query = query, onNavigateToProfile = { uid -> navController.navigate(Screen.Profile.createRoute(uid)) }, onNavigateBack = { navController.popBackStack() })
+        }
+
+        composable(Screen.Admin.route) {
+            val adminViewModel: AdminViewModel = viewModel()
+            AdminDashboardScreen(vm = adminViewModel, onBack = { navController.popBackStack() })
         }
     }
 
-    if (authViewModel.state.isLoggedIn && navController.currentDestination?.route != Screen.Home.route) {
-        navController.navigate(Screen.Home.route) {
-            popUpTo(0) { inclusive = true }
-        }
+    if (authViewModel.state.isLoggedIn && (navController.currentDestination?.route == Screen.Login.route || navController.currentDestination?.route == Screen.Register.route)) {
+        navController.navigate(Screen.Home.route) { popUpTo(0) { inclusive = true } }
     }
 }

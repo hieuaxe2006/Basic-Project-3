@@ -12,7 +12,16 @@ class AuthRepository {
     val currentUser get() = auth.currentUser
 
     suspend fun login(email: String, password: String): Result<Unit> = runCatching {
-        auth.signInWithEmailAndPassword(email, password).await()
+        val result = auth.signInWithEmailAndPassword(email, password).await()
+        val uid = result.user?.uid ?: throw Exception("Login failed")
+
+        val userDoc = db.collection("users").document(uid).get().await()
+        val user = userDoc.toObject(User::class.java)
+
+        if (user?.is_blocked == true) {
+            auth.signOut()
+            throw Exception("Tài khoản của bạn đã bị khóa bởi quản trị viên!")
+        }
     }
 
     suspend fun register(username: String, email: String, password: String): Result<Unit> = runCatching {
@@ -21,7 +30,9 @@ class AuthRepository {
         val user = User(
             id = uid,
             username = username,
-            email = email
+            email = email,
+            role = "user",
+            is_blocked = false
         )
         db.collection("users").document(uid).set(user).await()
     }
