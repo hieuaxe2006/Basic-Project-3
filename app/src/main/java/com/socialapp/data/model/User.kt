@@ -10,6 +10,6 @@ data class User(
     val following_count: Int = 0,
     val is_premium: Boolean = false,
     val is_private: Boolean = false,
-    val is_blocked: Boolean = false, // Thêm trường này
+    val is_blocked: Boolean = false,
     val role: String = "user"
 )

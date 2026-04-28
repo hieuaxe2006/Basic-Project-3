@@ -15,12 +15,10 @@ class AdminRepository {
     suspend fun getAllPosts(): List<Post> =
         db.collection("posts").orderBy("created_at", Query.Direction.DESCENDING).get().await().toObjects(Post::class.java)
 
-    // Hàm xóa bài viết
     suspend fun deletePost(postId: String): Result<Unit> = runCatching {
         db.collection("posts").document(postId).delete().await()
     }
 
-    // Hàm chặn hoặc bỏ chặn người dùng
     suspend fun toggleBlockUser(uid: String, isBlocked: Boolean): Result<Unit> = runCatching {
         db.collection("users").document(uid).update("is_blocked", isBlocked).await()
     }

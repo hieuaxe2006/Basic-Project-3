@@ -16,27 +16,22 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     var isDarkMode by mutableStateOf(prefs.getBoolean("dark_mode", false))
         private set
-
     var privateAccount by mutableStateOf(prefs.getBoolean("private_account", false))
         private set
-
     var isPremium by mutableStateOf(false)
         private set
-
-    var isAdmin by mutableStateOf(false) // Thêm biến này
+    var isAdmin by mutableStateOf(false)
         private set
 
-    init {
-        loadUserSettings()
-    }
+    init { loadUserSettings() }
 
     private fun loadUserSettings() {
         viewModelScope.launch {
             val uid = repo.currentUid ?: return@launch
             val user = repo.getUser(uid)
             isPremium = user?.is_premium ?: false
-            privateAccount = user?.is_private ?: prefs.getBoolean("private_account", false)
-            isAdmin = user?.role == "admin" // Kiểm tra quyền admin
+            isAdmin = user?.role == "admin"
+            privateAccount = user?.is_private ?: false
         }
     }
 
@@ -47,21 +42,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun togglePrivateAccount(enabled: Boolean) {
         viewModelScope.launch {
-            val originalState = privateAccount
-            privateAccount = enabled
-            prefs.edit().putBoolean("private_account", enabled).apply()
-            repo.updatePrivateStatus(enabled).onFailure {
-                privateAccount = originalState
-                prefs.edit().putBoolean("private_account", originalState).apply()
-            }
+            repo.updatePrivateStatus(enabled).onSuccess { privateAccount = enabled }
         }
     }
 
     fun togglePremium(enabled: Boolean) {
         viewModelScope.launch {
-            val originalState = isPremium
-            isPremium = enabled
-            repo.updatePremiumStatus(enabled).onFailure { isPremium = originalState }
+            repo.updatePremiumStatus(enabled).onSuccess { isPremium = enabled }
         }
     }
 }

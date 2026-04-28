@@ -28,18 +28,12 @@ fun AdminDashboardScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Quản trị hệ thống") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Text("←", style = MaterialTheme.typography.headlineMedium)
-                    }
-                }
+                navigationIcon = { IconButton(onClick = onBack) { Text("←", style = MaterialTheme.typography.headlineMedium) } }
             )
         }
     ) { padding ->
         if (vm.state.isLoading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) { CircularProgressIndicator() }
         } else {
             Column(modifier = Modifier.padding(padding)) {
                 TabRow(selectedTabIndex = selectedTab) {
@@ -47,7 +41,6 @@ fun AdminDashboardScreen(
                         Tab(selected = selectedTab == index, onClick = { selectedTab = index }, text = { Text(title) })
                     }
                 }
-
                 when (selectedTab) {
                     0 -> StatsTab(vm.state)
                     1 -> UsersTab(vm.state, onToggleBlock = { uid, status -> vm.toggleBlockUser(uid, status) })
@@ -69,10 +62,7 @@ fun StatsTab(state: AdminState) {
         }
         Text("Bảng xếp hạng Follower", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
         state.topUsers.forEach { user ->
-            ListItem(
-                headlineContent = { Text(user.username) },
-                trailingContent = { Text("${user.followers_count} người theo dõi", style = MaterialTheme.typography.bodySmall) }
-            )
+            ListItem(headlineContent = { Text(user.username) }, trailingContent = { Text("${user.followers_count} fl", style = MaterialTheme.typography.bodySmall) })
         }
     }
 }
@@ -82,20 +72,12 @@ fun UsersTab(state: AdminState, onToggleBlock: (String, Boolean) -> Unit) {
     LazyColumn {
         items(state.users) { user ->
             ListItem(
-                headlineContent = {
-                    Text(user.username, color = if(user.is_blocked) Color.Gray else Color.Unspecified)
-                },
+                headlineContent = { Text(user.username, color = if(user.is_blocked) Color.Gray else Color.Unspecified) },
                 supportingContent = { Text(user.email) },
                 trailingContent = {
-                    Button(
-                        onClick = { onToggleBlock(user.id, user.is_blocked) },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (user.is_blocked) Color(0xFF4CAF50) else Color(0xFFD32F2F)
-                        )
-                    ) {
+                    Button(onClick = { onToggleBlock(user.id, user.is_blocked) }, colors = ButtonDefaults.buttonColors(containerColor = if (user.is_blocked) Color(0xFF4CAF50) else Color(0xFFD32F2F))) {
                         Icon(if (user.is_blocked) Icons.Default.CheckCircle else Icons.Default.Block, null, Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(if (user.is_blocked) "Mở chặn" else "Chặn")
+                        Text(if (user.is_blocked) " Mở" else " Chặn")
                     }
                 }
             )
@@ -110,12 +92,8 @@ fun PostsTab(state: AdminState, onDelete: (String) -> Unit) {
         items(state.posts) { post ->
             ListItem(
                 headlineContent = { Text(post.content, maxLines = 2) },
-                supportingContent = { Text("Người đăng: ${post.user_id}") },
-                trailingContent = {
-                    IconButton(onClick = { onDelete(post.id) }) {
-                        Icon(Icons.Default.Delete, tint = Color.Red, contentDescription = "Xóa bài")
-                    }
-                }
+                supportingContent = { Text("ID: ${post.user_id}") },
+                trailingContent = { IconButton(onClick = { onDelete(post.id) }) { Icon(Icons.Default.Delete, tint = Color.Red, contentDescription = null) } }
             )
             HorizontalDivider()
         }

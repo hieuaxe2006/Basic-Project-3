@@ -41,17 +41,13 @@ class AdminViewModel : ViewModel() {
 
     fun deletePost(postId: String) {
         viewModelScope.launch {
-            repo.deletePost(postId).onSuccess {
-                loadAdminData() // Tải lại danh sách sau khi xóa
-            }
+            repo.deletePost(postId).onSuccess { loadAdminData() }
         }
     }
 
     fun toggleBlockUser(uid: String, currentBlockStatus: Boolean) {
         viewModelScope.launch {
-            repo.toggleBlockUser(uid, !currentBlockStatus).onSuccess {
-                loadAdminData() // Tải lại danh sách sau khi cập nhật
-            }
+            repo.toggleBlockUser(uid, !currentBlockStatus).onSuccess { loadAdminData() }
         }
     }
 }

@@ -45,110 +45,57 @@ fun HomeScreen(
     val state = feedViewModel.state
     var searchQuery by remember { mutableStateOf("") }
     var barsVisible by remember { mutableStateOf(true) }
+    val density = LocalDensity.current
+    var topBarHeight by remember { mutableStateOf(152.dp) }
 
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y < -10f) barsVisible = false
-                else if (available.y > 10f) barsVisible = true
+                if (available.y < -10f) barsVisible = false else if (available.y > 10f) barsVisible = true
                 return Offset.Zero
             }
         }
     }
-
-    LaunchedEffect(Unit) { feedViewModel.loadFeed() }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("SocialApp") },
                 actions = {
-                    // PHÂN QUYỀN: Chỉ hiện nút Admin nếu đúng role
                     if (state.currentUser?.role == "admin") {
-                        IconButton(onClick = onNavigateToAdmin) {
-                            Icon(Icons.Default.AdminPanelSettings, "Admin", tint = MaterialTheme.colorScheme.primary)
-                        }
+                        IconButton(onClick = onNavigateToAdmin) { Icon(Icons.Default.AdminPanelSettings, "Admin", tint = MaterialTheme.colorScheme.primary) }
                     }
-
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, "Settings")
-                    }
-                    TextButton(onClick = onLogout) {
-                        Text("Logout")
-                    }
+                    IconButton(onClick = onNavigateToSettings) { Icon(Icons.Default.Settings, "Settings") }
+                    TextButton(onClick = onLogout) { Text("Logout") }
                 }
             )
-        },
+        }
     ) { padding ->
-        val density = LocalDensity.current
-        var topBarHeight by remember { mutableStateOf(152.dp) }
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(Color(0xFFE3F2FD), Color(0xFFBBDEFB))))
-                .padding(padding)
-        ) {
+        Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFFE3F2FD), Color(0xFFBBDEFB)))).padding(padding)) {
             Box(modifier = Modifier.fillMaxSize().nestedScroll(nestedScrollConnection)) {
                 if (state.isLoading && state.posts.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(top = topBarHeight, bottom = 8.dp)
-                    ) {
+                    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topBarHeight, bottom = 8.dp)) {
                         items(state.posts, key = { it.id }) { post ->
                             PostItem(
-                                post = post,
-                                user = state.userMap[post.user_id],
-                                isLiked = post.id in state.likedIds,
-                                isSaved = post.id in state.savedIds,
-                                isFollowing = post.user_id in state.followingIds,
-                                isOwnPost = post.user_id == feedViewModel.currentUid,
-                                onLike = { feedViewModel.toggleLike(post.id) },
-                                onComment = { onNavigateToComments(post.id) },
-                                onUserClick = { uid -> onNavigateToProfile(uid) },
-                                onSave = { feedViewModel.toggleSave(post.id) },
-                                onFollow = { feedViewModel.toggleFollow(post.user_id) }
+                                post = post, user = state.userMap[post.user_id], isLiked = post.id in state.likedIds, isSaved = post.id in state.savedIds, isFollowing = post.user_id in state.followingIds, isOwnPost = post.user_id == feedViewModel.currentUid,
+                                onLike = { feedViewModel.toggleLike(post.id) }, onComment = { onNavigateToComments(post.id) }, onUserClick = { onNavigateToProfile(it) }, onSave = { feedViewModel.toggleSave(post.id) }, onFollow = { feedViewModel.toggleFollow(post.user_id) }
                             )
                         }
                     }
                 }
             }
-
-            AnimatedVisibility(
-                visible = barsVisible,
-                enter = slideInVertically(initialOffsetY = { -it }),
-                exit = slideOutVertically(targetOffsetY = { -it }),
-                modifier = Modifier.align(Alignment.TopCenter)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFFE3F2FD))
-                        .onSizeChanged {
-                            val heightDp = with(density) { it.height.toDp() }
-                            if (heightDp > 0.dp) topBarHeight = heightDp
-                        }
-                ) {
+            AnimatedVisibility(visible = barsVisible, enter = slideInVertically(initialOffsetY = { -it }), exit = slideOutVertically(targetOffsetY = { -it }), modifier = Modifier.align(Alignment.TopCenter)) {
+                Column(modifier = Modifier.fillMaxWidth().background(Color(0xFFE3F2FD)).onSizeChanged { topBarHeight = with(density) { it.height.toDp() } }) {
                     NavigationBar {
-                        NavigationBarItem(icon = { Icon(Icons.Default.Home, "Home") }, label = { Text("Home") }, selected = true, onClick = { feedViewModel.loadFeed() })
-                        NavigationBarItem(icon = { Icon(Icons.Default.Explore, "Explore") }, label = { Text("Explore") }, selected = false, onClick = onNavigateToExplore)
-                        NavigationBarItem(icon = { Icon(Icons.Default.Add, "Post") }, label = { Text("Post") }, selected = false, onClick = onNavigateToCreatePost)
-                        NavigationBarItem(icon = { Icon(Icons.Default.Chat, "Chat") }, label = { Text("Chat") }, selected = false, onClick = onNavigateToChat)
-                        NavigationBarItem(icon = { Icon(Icons.Default.Person, "Profile") }, label = { Text("Profile") }, selected = false, onClick = { onNavigateToProfile(null) })
+                        NavigationBarItem(icon = { Icon(Icons.Default.Home, null) }, label = { Text("Home") }, selected = true, onClick = { feedViewModel.loadFeed() })
+                        NavigationBarItem(icon = { Icon(Icons.Default.Explore, null) }, label = { Text("Explore") }, selected = false, onClick = onNavigateToExplore)
+                        NavigationBarItem(icon = { Icon(Icons.Default.Add, null) }, label = { Text("Post") }, selected = false, onClick = onNavigateToCreatePost)
+                        NavigationBarItem(icon = { Icon(Icons.Default.Chat, null) }, label = { Text("Chat") }, selected = false, onClick = onNavigateToChat)
+                        NavigationBarItem(icon = { Icon(Icons.Default.Person, null) }, label = { Text("Profile") }, selected = false, onClick = { onNavigateToProfile(null) })
                     }
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = { Text("Search post, user...") },
-                        leadingIcon = { Icon(Icons.Default.Search, "Search") },
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                        shape = RoundedCornerShape(24.dp),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { if (searchQuery.isNotBlank()) onNavigateToSearch(searchQuery) })
-                    )
+                    OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it }, placeholder = { Text("Search...") }, leadingIcon = { Icon(Icons.Default.Search, null) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = RoundedCornerShape(24.dp), singleLine = true, keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { onNavigateToSearch(searchQuery) }))
                 }
             }
         }

@@ -15,11 +15,11 @@ class AuthRepository {
         val result = auth.signInWithEmailAndPassword(email, password).await()
         val uid = result.user?.uid ?: throw Exception("Login failed")
 
-        // KIỂM TRA QUYỀN CHẶN:
         val userDoc = db.collection("users").document(uid).get().await()
         val user = userDoc.toObject(User::class.java)
+
         if (user?.is_blocked == true) {
-            auth.signOut() // Đăng xuất ngay lập tức
+            auth.signOut()
             throw Exception("Tài khoản của bạn đã bị khóa bởi quản trị viên!")
         }
     }
@@ -32,7 +32,7 @@ class AuthRepository {
             username = username,
             email = email,
             role = "user",
-            is_blocked = false // Mặc định không bị chặn
+            is_blocked = false
         )
         db.collection("users").document(uid).set(user).await()
     }
