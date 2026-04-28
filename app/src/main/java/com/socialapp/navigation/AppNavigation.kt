@@ -24,6 +24,9 @@ import com.socialapp.ui.profile.ProfileViewModel
 import com.socialapp.ui.explore.ExploreScreen
 import com.socialapp.ui.search.SearchScreen
 import com.socialapp.ui.settings.SettingsScreen
+// Import màn hình Admin
+import com.socialapp.ui.admin.AdminDashboardScreen
+import com.socialapp.ui.admin.AdminViewModel
 
 @Composable
 fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
@@ -79,6 +82,10 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
                 },
                 onNavigateToSearch = { query ->
                     navController.navigate(Screen.Search.createRoute(query))
+                },
+                // Thêm sự kiện để chuyển đến trang Admin nếu cần từ Home
+                onNavigateToAdmin = {
+                    navController.navigate(Screen.Admin.route)
                 }
             )
         }
@@ -155,7 +162,11 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
 
         composable(Screen.Settings.route) {
             SettingsScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                // Có thể thêm nút vào Admin từ Settings
+                onNavigateToAdmin = {
+                    navController.navigate(Screen.Admin.route)
+                }
             )
         }
 
@@ -172,9 +183,21 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+
+        // --- Màn hình quản trị (Admin) ---
+        composable(Screen.Admin.route) {
+            val adminViewModel: AdminViewModel = viewModel()
+            AdminDashboardScreen(
+                vm = adminViewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
     }
 
-    if (authViewModel.state.isLoggedIn && navController.currentDestination?.route != Screen.Home.route) {
+    // Tự động chuyển hướng về Home nếu đã đăng nhập và đang ở Login/Register
+    if (authViewModel.state.isLoggedIn &&
+        (navController.currentDestination?.route == Screen.Login.route ||
+                navController.currentDestination?.route == Screen.Register.route)) {
         navController.navigate(Screen.Home.route) {
             popUpTo(0) { inclusive = true }
         }

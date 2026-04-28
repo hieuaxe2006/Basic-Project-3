@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 data class FeedState(
     val posts: List<Post> = emptyList(),
     val userMap: Map<String, User> = emptyMap(),
+    val currentUser: User? = null, // Lưu thông tin người đang dùng app
     val recommendedUsers: List<User> = emptyList(),
     val likedIds: Set<String> = emptySet(),
     val savedIds: Set<String> = emptySet(),
@@ -31,23 +32,16 @@ class FeedViewModel : ViewModel() {
 
     init {
         loadFeed()
+        loadCurrentUser()
         observeSavedPosts()
         observeFollowing()
     }
 
-    private fun observeSavedPosts() {
+    private fun loadCurrentUser() {
+        val uid = currentUid ?: return
         viewModelScope.launch {
-            repo.getSavedPostIdsFlow().collect { ids ->
-                state = state.copy(savedIds = ids)
-            }
-        }
-    }
-
-    private fun observeFollowing() {
-        viewModelScope.launch {
-            repo.getFollowingIdsFlow().collect { ids ->
-                state = state.copy(followingIds = ids)
-            }
+            val user = repo.getUser(uid)
+            state = state.copy(currentUser = user)
         }
     }
 
@@ -62,7 +56,6 @@ class FeedViewModel : ViewModel() {
                         repo.getUser(uid)?.let { userMap[uid] = it }
                     }
                     val likedIds = repo.getLikedPostIds(posts.map { it.id })
-
                     val recommendedResult = repo.getRecommendedUsers().getOrDefault(emptyList())
 
                     state = state.copy(
@@ -82,29 +75,32 @@ class FeedViewModel : ViewModel() {
             repo.toggleLike(postId)
                 .onSuccess { liked ->
                     val updatedPosts = state.posts.map { post ->
-                        if (post.id == postId) {
-                            post.copy(like_count = post.like_count + if (liked) 1 else -1)
-                        } else post
+                        if (post.id == postId) post.copy(like_count = post.like_count + if (liked) 1 else -1)
+                        else post
                     }
-                    val updatedLikedIds = if (liked) {
-                        state.likedIds + postId
-                    } else {
-                        state.likedIds - postId
-                    }
+                    val updatedLikedIds = if (liked) state.likedIds + postId else state.likedIds - postId
                     state = state.copy(posts = updatedPosts, likedIds = updatedLikedIds)
                 }
         }
     }
 
     fun toggleSave(postId: String) {
-        viewModelScope.launch {
-            repo.toggleSavePost(postId)
-        }
+        viewModelScope.launch { repo.toggleSavePost(postId) }
     }
 
     fun toggleFollow(targetUid: String) {
+        viewModelScope.launch { repo.toggleFollow(targetUid) }
+    }
+
+    private fun observeSavedPosts() {
         viewModelScope.launch {
-            repo.toggleFollow(targetUid)
+            repo.getSavedPostIdsFlow().collect { state = state.copy(savedIds = it) }
+        }
+    }
+
+    private fun observeFollowing() {
+        viewModelScope.launch {
+            repo.getFollowingIdsFlow().collect { state = state.copy(followingIds = it) }
         }
     }
 }
