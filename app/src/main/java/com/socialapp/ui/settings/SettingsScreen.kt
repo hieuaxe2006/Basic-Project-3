@@ -33,16 +33,7 @@ fun SettingsScreen(
                 Text("Premium Account", modifier = Modifier.weight(1f))
                 Switch(checked = viewModel.isPremium, onCheckedChange = { viewModel.togglePremium(it) })
             }
-            if (viewModel.isAdmin) {
-                HorizontalDivider(Modifier.padding(vertical = 16.dp))
-                Text("Admin Tools", style = MaterialTheme.typography.titleLarge)
-                Row(modifier = Modifier.fillMaxWidth().clickable { onNavigateToAdmin() }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.AdminPanelSettings, null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(12.dp))
-                    Text("Admin Dashboard", modifier = Modifier.weight(1f))
-                    Icon(Icons.Default.ChevronRight, null)
-                }
-            }
+
             HorizontalDivider(Modifier.padding(vertical = 16.dp))
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("Private Account", modifier = Modifier.weight(1f))
