@@ -39,6 +39,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.compose.ui:ui-graphics:1.11.1")
     // Compose BOM
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)

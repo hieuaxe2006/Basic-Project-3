@@ -6,6 +6,7 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.socialapp.data.model.Comment
+import com.socialapp.data.model.FriendRequest
 import com.socialapp.data.model.Post
 import com.socialapp.data.model.User
 import kotlinx.coroutines.channels.awaitClose
@@ -17,6 +18,112 @@ class SocialRepository {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     val currentUid get() = auth.currentUser?.uid
+
+    // ── Friend Request Logic ──
+
+    suspend fun sendFriendRequest(targetUid: String): Result<Unit> = runCatching {
+        val uid = currentUid ?: throw Exception("Not logged in")
+        if (uid == targetUid) throw Exception("Cannot add yourself")
+
+        val existing = db.collection("friend_requests")
+            .whereEqualTo("sender_id", uid)
+            .whereEqualTo("receiver_id", targetUid)
+            .get().await()
+
+        if (!existing.isEmpty) throw Exception("Request already sent")
+
+        val docRef = db.collection("friend_requests").document()
+        val request = FriendRequest(
+            id = docRef.id,
+            sender_id = uid,
+            receiver_id = targetUid,
+            status = "pending",
+            created_at = Timestamp.now()
+        )
+        docRef.set(request).await()
+    }
+
+    suspend fun acceptFriendRequest(requestId: String): Result<Unit> = runCatching {
+        val requestDoc = db.collection("friend_requests").document(requestId).get().await()
+        val request = requestDoc.toObject(FriendRequest::class.java) ?: throw Exception("Request not found")
+
+        db.collection("friend_requests").document(requestId).update("status", "accepted").await()
+
+        val friendDocId = if (request.sender_id < request.receiver_id) 
+            "${request.sender_id}_${request.receiver_id}" else "${request.receiver_id}_${request.sender_id}"
+            
+        db.collection("friends").document(friendDocId).set(
+            mapOf(
+                "user1" to request.sender_id, 
+                "user2" to request.receiver_id, 
+                "since" to Timestamp.now(),
+                "users" to listOf(request.sender_id, request.receiver_id)
+            )
+        ).await()
+    }
+
+    suspend fun getFriendStatus(targetUid: String): String {
+        val uid = currentUid ?: return "none"
+        
+        val friendDocId = if (uid < targetUid) "${uid}_${targetUid}" else "${targetUid}_${uid}"
+        val friendDoc = db.collection("friends").document(friendDocId).get().await()
+        if (friendDoc.exists()) return "friends"
+
+        val sentRequest = db.collection("friend_requests")
+            .whereEqualTo("sender_id", uid)
+            .whereEqualTo("receiver_id", targetUid)
+            .whereEqualTo("status", "pending")
+            .get().await()
+        if (!sentRequest.isEmpty) return "requested"
+
+        val receivedRequest = db.collection("friend_requests")
+            .whereEqualTo("sender_id", targetUid)
+            .whereEqualTo("receiver_id", uid)
+            .whereEqualTo("status", "pending")
+            .get().await()
+        if (!receivedRequest.isEmpty) return "pending_approval"
+
+        return "none"
+    }
+
+    suspend fun getFriends(): Result<List<User>> = runCatching {
+        val uid = currentUid ?: throw Exception("Not logged in")
+        val query = db.collection("friends")
+            .whereArrayContains("users", uid)
+            .get().await()
+            
+        val friendIds = query.documents.mapNotNull { doc ->
+            val users = doc.get("users") as? List<String>
+            users?.firstOrNull { it != uid }
+        }
+        
+        if (friendIds.isEmpty()) return@runCatching emptyList()
+        
+        val users = mutableListOf<User>()
+        friendIds.chunked(10).forEach { chunk ->
+            val userDocs = db.collection("users").whereIn("id", chunk).get().await()
+            users.addAll(userDocs.toObjects(User::class.java))
+        }
+        users
+    }
+
+    suspend fun getPendingRequests(): Result<List<Pair<FriendRequest, User>>> = runCatching {
+        val uid = currentUid ?: throw Exception("Not logged in")
+        val requests = db.collection("friend_requests")
+            .whereEqualTo("receiver_id", uid)
+            .whereEqualTo("status", "pending")
+            .get().await()
+            .toObjects(FriendRequest::class.java)
+            
+        val result = mutableListOf<Pair<FriendRequest, User>>()
+        for (req in requests) {
+            val userDoc = db.collection("users").document(req.sender_id).get().await()
+            userDoc.toObject(User::class.java)?.let {
+                result.add(req to it)
+            }
+        }
+        result
+    }
 
     // ── Follow ──
 

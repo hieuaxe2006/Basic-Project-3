@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.socialapp.data.model.Post
 import com.socialapp.data.model.User
 import com.socialapp.data.remote.ImgBBApi
+import com.socialapp.data.repository.ChatRepository
 import com.socialapp.data.repository.SocialRepository
 import com.socialapp.data.repository.UserRepository
 import kotlinx.coroutines.Job
@@ -25,20 +26,27 @@ data class ProfileState(
     val error: String? = null,
     val followersList: List<User> = emptyList(),
     val followingList: List<User> = emptyList(),
+    val friendsList: List<User> = emptyList(),
     val isListLoading: Boolean = false,
     val postedPosts: List<Post> = emptyList(),
     val savedPosts: List<Post> = emptyList(),
     val isPostsLoading: Boolean = false,
     val isFollowing: Boolean = false,
+    val friendStatus: String = "none", // none, requested, pending_approval, friends
     val isUploadingAvatar: Boolean = false,
     val isChangingPassword: Boolean = false,
     val passwordChangeSuccess: Boolean = false,
-    val passwordChangeError: String? = null
+    val passwordChangeError: String? = null,
+    val isSharing: Boolean = false,
+    val shareSuccess: String? = null,
+    val searchResults: List<User> = emptyList(),
+    val isSearching: Boolean = false
 )
 
 class ProfileViewModel : ViewModel() {
     private val repo = UserRepository()
     private val socialRepo = SocialRepository()
+    private val chatRepo = ChatRepository()
 
     var state by mutableStateOf(ProfileState())
         private set
@@ -63,6 +71,7 @@ class ProfileViewModel : ViewModel() {
                         loadSavedPosts()
                     } else {
                         checkFollowingStatus(user.id)
+                        checkFriendStatus(user.id)
                     }
                 }
         }
@@ -72,6 +81,24 @@ class ProfileViewModel : ViewModel() {
         viewModelScope.launch {
             val following = socialRepo.isFollowing(targetUid)
             state = state.copy(isFollowing = following)
+        }
+    }
+
+    private fun checkFriendStatus(targetUid: String) {
+        viewModelScope.launch {
+            val status = socialRepo.getFriendStatus(targetUid)
+            state = state.copy(friendStatus = status)
+        }
+    }
+
+    fun sendFriendRequest() {
+        val targetUid = state.user?.id ?: return
+        viewModelScope.launch {
+            socialRepo.sendFriendRequest(targetUid).onSuccess {
+                state = state.copy(friendStatus = "requested")
+            }.onFailure {
+                state = state.copy(error = it.message)
+            }
         }
     }
 
@@ -89,7 +116,7 @@ class ProfileViewModel : ViewModel() {
             state = state.copy(isPostsLoading = true)
             socialRepo.getUserPosts(uid)
                 .onSuccess { state = state.copy(isPostsLoading = false, postedPosts = it) }
-                .onFailure { state = state.copy(isPostsLoading = false) }
+                . onFailure { state = state.copy(isPostsLoading = false) }
         }
     }
 
@@ -128,6 +155,42 @@ class ProfileViewModel : ViewModel() {
             repo.getFollowing(targetUid)
                 .onSuccess { state = state.copy(isListLoading = false, followingList = it) }
                 .onFailure { state = state.copy(isListLoading = false) }
+        }
+    }
+
+    fun loadFriends() {
+        viewModelScope.launch {
+            state = state.copy(isListLoading = true)
+            socialRepo.getFriends()
+                .onSuccess { state = state.copy(isListLoading = false, friendsList = it) }
+                .onFailure { state = state.copy(isListLoading = false, error = it.message) }
+        }
+    }
+
+    fun searchUsers(query: String) {
+        if (query.isBlank()) {
+            state = state.copy(searchResults = emptyList())
+            return
+        }
+        viewModelScope.launch {
+            state = state.copy(isSearching = true)
+            socialRepo.searchUsers(query)
+                .onSuccess { state = state.copy(isSearching = false, searchResults = it) }
+                .onFailure { state = state.copy(isSearching = false) }
+        }
+    }
+
+    fun sharePost(post: Post, friend: User) {
+        viewModelScope.launch {
+            state = state.copy(isSharing = true, shareSuccess = null)
+            val shareContent = "Chia sẻ bài viết:\n${post.content}\n${post.image_url}".trim()
+            chatRepo.sendMessage(friend.id, shareContent)
+                .onSuccess {
+                    state = state.copy(isSharing = false, shareSuccess = "Đã gửi đến ${friend.username}")
+                }
+                .onFailure {
+                    state = state.copy(isSharing = false, error = it.message)
+                }
         }
     }
 
@@ -191,8 +254,15 @@ class ProfileViewModel : ViewModel() {
         state = state.copy(passwordChangeSuccess = false, passwordChangeError = null)
     }
 
+    fun clearShareState() {
+        state = state.copy(shareSuccess = null)
+    }
+
     val isOwnProfile: Boolean
         get() = state.user?.id == repo.currentUid
+
+    val currentUid: String?
+        get() = repo.currentUid
 
     val isFollowing: Boolean
         get() = state.isFollowing
