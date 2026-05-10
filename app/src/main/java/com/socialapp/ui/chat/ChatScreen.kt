@@ -59,20 +59,19 @@ fun ChatScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // User Avatar placeholder or logic if available
                         Surface(
                             modifier = Modifier.size(36.dp),
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text(otherName.take(1).uppercase(), fontSize = 14.sp)
+                                Text(otherName.take(1).uppercase(), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                             }
                         }
-                        Spacer(Modifier.width(12.dp))
+                        Spacer(Modifier.width(10.dp))
                         Column {
-                            Text(otherName, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                            Text("Đang hoạt động", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                            Text(otherName, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 16.sp))
+                            Text("Đang hoạt động", style = MaterialTheme.typography.bodySmall, color = Color(0xFF4CAF50), fontWeight = FontWeight.Medium)
                         }
                     }
                 },
@@ -86,15 +85,15 @@ fun ChatScreen(
                     IconButton(onClick = {}) { Icon(Icons.Filled.Videocam, null, tint = MaterialTheme.colorScheme.primary) }
                     IconButton(onClick = {}) { Icon(Icons.Filled.Info, null, tint = MaterialTheme.colorScheme.primary) }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface, scrolledContainerColor = MaterialTheme.colorScheme.surface)
             )
         },
         bottomBar = {
-            Surface(tonalElevation = 3.dp) {
+            Surface(tonalElevation = 2.dp, color = MaterialTheme.colorScheme.surface) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = {}) { Icon(Icons.Filled.Add, null, tint = MaterialTheme.colorScheme.primary) }
@@ -104,18 +103,19 @@ fun ChatScreen(
                     OutlinedTextField(
                         value = input,
                         onValueChange = { input = it },
-                        placeholder = { Text("Tin nhắn") },
+                        placeholder = { Text("Tin nhắn", fontSize = 15.sp) },
                         modifier = Modifier
                             .weight(1f)
-                            .padding(horizontal = 4.dp),
-                        shape = RoundedCornerShape(24.dp),
+                            .padding(horizontal = 4.dp)
+                            .heightIn(max = 120.dp),
+                        shape = RoundedCornerShape(20.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                             focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                             unfocusedBorderColor = Color.Transparent,
                             focusedBorderColor = Color.Transparent
                         ),
-                        singleLine = true
+                        singleLine = false
                     )
                     
                     if (input.isNotBlank()) {
@@ -139,18 +139,20 @@ fun ChatScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(MaterialTheme.colorScheme.background),
+                .background(MaterialTheme.colorScheme.surface),
             state = listState,
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
         ) {
             itemsIndexed(state.messages, key = { _, msg -> msg.id }) { index, message ->
                 val isOwn = message.sender_id == viewModel.currentUid
                 val showAvatar = !isOwn && (index == 0 || state.messages[index-1].sender_id != message.sender_id)
+                val isLastInBlock = index == state.messages.size - 1 || state.messages[index+1].sender_id != message.sender_id
                 
                 MessageBubble(
                     message = message,
                     isOwn = isOwn,
-                    showAvatar = showAvatar
+                    showAvatar = showAvatar,
+                    isLastInBlock = isLastInBlock
                 )
             }
         }
@@ -158,11 +160,11 @@ fun ChatScreen(
 }
 
 @Composable
-private fun MessageBubble(message: Message, isOwn: Boolean, showAvatar: Boolean) {
+private fun MessageBubble(message: Message, isOwn: Boolean, showAvatar: Boolean, isLastInBlock: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 1.dp),
+            .padding(vertical = if (isLastInBlock) 4.dp else 1.dp),
         horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start,
         verticalAlignment = Alignment.Bottom
     ) {
@@ -174,7 +176,7 @@ private fun MessageBubble(message: Message, isOwn: Boolean, showAvatar: Boolean)
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text(message.sender_id.take(1), fontSize = 10.sp)
+                        Text(message.sender_id.take(1), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             } else {
@@ -187,17 +189,18 @@ private fun MessageBubble(message: Message, isOwn: Boolean, showAvatar: Boolean)
             shape = RoundedCornerShape(
                 topStart = 18.dp,
                 topEnd = 18.dp,
-                bottomStart = if (isOwn) 18.dp else 4.dp,
-                bottomEnd = if (isOwn) 4.dp else 18.dp
+                bottomStart = if (isOwn) 18.dp else if (isLastInBlock) 4.dp else 18.dp,
+                bottomEnd = if (isOwn) (if (isLastInBlock) 4.dp else 18.dp) else 18.dp
             ),
             color = if (isOwn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-            modifier = Modifier.widthIn(max = 260.dp)
+            modifier = Modifier.widthIn(max = 280.dp)
         ) {
             Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                 Text(
                     text = message.content,
                     color = if (isOwn) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                    fontSize = 15.sp
+                    fontSize = 15.sp,
+                    lineHeight = 20.sp
                 )
                 
                 if (message.content.contains("http")) {
@@ -209,8 +212,8 @@ private fun MessageBubble(message: Message, isOwn: Boolean, showAvatar: Boolean)
                             contentDescription = null,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(150.dp)
-                                .clip(RoundedCornerShape(8.dp)),
+                                .heightIn(max = 200.dp)
+                                .clip(RoundedCornerShape(12.dp)),
                             contentScale = ContentScale.Crop
                         )
                     }

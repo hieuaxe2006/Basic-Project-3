@@ -6,6 +6,7 @@ data class User(
     val email: String = "",
     val avatar: String = "",
     val bio: String = "",
+    val note: String = "",
     val followers_count: Int = 0,
     val following_count: Int = 0,
     val is_premium: Boolean = false,

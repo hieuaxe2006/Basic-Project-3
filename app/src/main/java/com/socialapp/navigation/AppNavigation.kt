@@ -7,20 +7,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.socialapp.ui.auth.AuthViewModel
-import com.socialapp.ui.auth.LoginScreen
-import com.socialapp.ui.auth.RegisterScreen
-import com.socialapp.ui.chat.ChatListScreen
-import com.socialapp.ui.chat.ChatListViewModel
-import com.socialapp.ui.chat.ChatScreen
-import com.socialapp.ui.chat.ChatViewModel
-import com.socialapp.ui.comment.CommentScreen
-import com.socialapp.ui.comment.CommentViewModel
+import com.socialapp.ui.auth.*
+import com.socialapp.ui.chat.*
+import com.socialapp.ui.comment.*
 import com.socialapp.ui.home.HomeScreen
-import com.socialapp.ui.post.CreatePostScreen
-import com.socialapp.ui.post.CreatePostViewModel
-import com.socialapp.ui.profile.ProfileScreen
-import com.socialapp.ui.profile.ProfileViewModel
+import com.socialapp.ui.post.*
+import com.socialapp.ui.profile.*
 import com.socialapp.ui.explore.ExploreScreen
 import com.socialapp.ui.search.SearchScreen
 import com.socialapp.ui.settings.SettingsScreen
@@ -30,12 +22,22 @@ import com.socialapp.ui.admin.AdminViewModel
 @Composable
 fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
     val navController = rememberNavController()
-    val startDest = if (authViewModel.state.isLoggedIn) Screen.Home.route else Screen.Login.route
+    val authState = authViewModel.state
+
+    // Xác định màn hình bắt đầu
+    val startDest = when {
+        !authState.isLoggedIn -> Screen.Login.route
+        authState.userRole == "admin" -> Screen.Admin.route
+        else -> Screen.Home.route
+    }
+
+    // Chờ lấy role từ Firebase
+    if (authState.isLoggedIn && authState.userRole == null) return
 
     NavHost(navController = navController, startDestination = startDest) {
         composable(Screen.Login.route) {
             LoginScreen(viewModel = authViewModel, onNavigateToRegister = {
-                navController.navigate(Screen.Register.route) { launchSingleTop = true }
+                navController.navigate(Screen.Register.route)
             })
         }
 
@@ -47,7 +49,7 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
             HomeScreen(
                 onLogout = {
                     authViewModel.logout()
-                    navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } }
+                    navController.navigate(Screen.Login.route) { popUpTo(0) }
                 },
                 onNavigateToProfile = { uid -> navController.navigate(Screen.Profile.createRoute(uid)) },
                 onNavigateToCreatePost = { navController.navigate(Screen.CreatePost.route) },
@@ -56,66 +58,52 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
                 onNavigateToExplore = { navController.navigate(Screen.Explore.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 onNavigateToSearch = { query -> navController.navigate(Screen.Search.createRoute(query)) },
-                onNavigateToAdmin = { navController.navigate(Screen.Admin.route) }
+                onNavigateToAdmin = {}
+            )
+        }
+
+        composable(Screen.Admin.route) {
+            val adminVM: AdminViewModel = viewModel()
+            AdminDashboardScreen(
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Screen.Login.route) { popUpTo(0) }
+                },
+                vm = adminVM
             )
         }
 
         composable(Screen.CreatePost.route) {
-            val createPostViewModel: CreatePostViewModel = viewModel()
-            CreatePostScreen(viewModel = createPostViewModel, onBack = { navController.popBackStack() }, onPostCreated = { navController.popBackStack() })
+            CreatePostScreen(viewModel = viewModel(), onBack = { navController.popBackStack() }, onPostCreated = { navController.popBackStack() })
         }
 
-        composable(route = Screen.Comments.route, arguments = listOf(navArgument("postId") { type = NavType.StringType })) { backStackEntry ->
-            val postId = backStackEntry.arguments?.getString("postId") ?: return@composable
-            val commentViewModel: CommentViewModel = viewModel()
-            CommentScreen(postId = postId, viewModel = commentViewModel, onBack = { navController.popBackStack() })
+        composable(route = Screen.Comments.route, arguments = listOf(navArgument("postId") { type = NavType.StringType })) { bse ->
+            val pid = bse.arguments?.getString("postId") ?: return@composable
+            CommentScreen(postId = pid, viewModel = viewModel(), onBack = { navController.popBackStack() })
         }
 
         composable(Screen.ChatList.route) {
-            val chatListViewModel: ChatListViewModel = viewModel()
-            ChatListScreen(viewModel = chatListViewModel, onBack = { navController.popBackStack() }, onOpenChat = { uid, name ->
-                navController.navigate(Screen.Chat.createRoute(uid, name))
+            ChatListScreen(viewModel = viewModel(), onBack = { navController.popBackStack() }, onOpenChat = { u, n ->
+                navController.navigate(Screen.Chat.createRoute(u, n))
             })
         }
 
-        composable(route = Screen.Chat.route, arguments = listOf(navArgument("uid") { type = NavType.StringType }, navArgument("name") { type = NavType.StringType })) { backStackEntry ->
-            val uid = backStackEntry.arguments?.getString("uid") ?: return@composable
-            val name = backStackEntry.arguments?.getString("name") ?: ""
-            val chatViewModel: ChatViewModel = viewModel()
-            ChatScreen(otherUid = uid, otherName = name, viewModel = chatViewModel, onBack = { navController.popBackStack() })
+        composable(route = Screen.Chat.route, arguments = listOf(navArgument("uid") { type = NavType.StringType }, navArgument("name") { type = NavType.StringType })) { bse ->
+            val uid = bse.arguments?.getString("uid") ?: ""
+            val name = bse.arguments?.getString("name") ?: ""
+            ChatScreen(otherUid = uid, otherName = name, viewModel = viewModel(), onBack = { navController.popBackStack() })
         }
 
-        composable(route = Screen.Profile.route, arguments = listOf(navArgument("uid") { type = NavType.StringType; nullable = true; defaultValue = null })) { backStackEntry ->
-            val uid = backStackEntry.arguments?.getString("uid")
-            val profileViewModel: ProfileViewModel = viewModel()
-            ProfileScreen(
-                viewModel = profileViewModel, 
-                uid = uid, 
-                onBack = { navController.popBackStack() },
-                onNavigateToChat = { targetUid, name ->
-                    navController.navigate(Screen.Chat.createRoute(targetUid, name))
-                }
-            )
+        composable(route = Screen.Profile.route, arguments = listOf(navArgument("uid") { type = NavType.StringType; nullable = true })) { bse ->
+            ProfileScreen(viewModel = viewModel(), uid = bse.arguments?.getString("uid"), onBack = { navController.popBackStack() })
         }
 
         composable(Screen.Explore.route) { ExploreScreen(onNavigateBack = { navController.popBackStack() }) }
 
-        composable(Screen.Settings.route) {
-            SettingsScreen(onBack = { navController.popBackStack() }, onNavigateToAdmin = { navController.navigate(Screen.Admin.route) })
-        }
+        composable(Screen.Settings.route) { SettingsScreen(onBack = { navController.popBackStack() }, onNavigateToAdmin = {}) }
 
-        composable(route = Screen.Search.route, arguments = listOf(navArgument("query") { type = NavType.StringType })) { backStackEntry ->
-            val query = backStackEntry.arguments?.getString("query") ?: ""
-            SearchScreen(query = query, onNavigateToProfile = { uid -> navController.navigate(Screen.Profile.createRoute(uid)) }, onNavigateBack = { navController.popBackStack() })
+        composable(route = Screen.Search.route, arguments = listOf(navArgument("query") { type = NavType.StringType })) { bse ->
+            SearchScreen(query = bse.arguments?.getString("query") ?: "", onNavigateToProfile = { u -> navController.navigate(Screen.Profile.createRoute(u)) }, onNavigateBack = { navController.popBackStack() })
         }
-
-        composable(Screen.Admin.route) {
-            val adminViewModel: AdminViewModel = viewModel()
-            AdminDashboardScreen(vm = adminViewModel, onBack = { navController.popBackStack() })
-        }
-    }
-
-    if (authViewModel.state.isLoggedIn && (navController.currentDestination?.route == Screen.Login.route || navController.currentDestination?.route == Screen.Register.route)) {
-        navController.navigate(Screen.Home.route) { popUpTo(0) { inclusive = true } }
     }
 }

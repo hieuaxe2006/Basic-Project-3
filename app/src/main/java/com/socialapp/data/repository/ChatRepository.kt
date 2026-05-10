@@ -9,6 +9,11 @@ import com.socialapp.data.model.Message
 import com.socialapp.data.model.User
 import kotlinx.coroutines.tasks.await
 
+data class ChatPartner(
+    val user: User,
+    val lastMessage: Message? = null
+)
+
 class ChatRepository {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
@@ -45,7 +50,7 @@ class ChatRepository {
             }
     }
 
-    suspend fun getChatPartners(): Result<List<User>> = runCatching {
+    suspend fun getChatPartners(): Result<List<ChatPartner>> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
 
         val sent = db.collection("messages")
@@ -58,16 +63,32 @@ class ChatRepository {
             .get().await()
             .toObjects(Message::class.java)
 
+        val allMessages = (sent + received).sortedByDescending { it.timestamp }
         val partnerIds = (sent.map { it.receiver_id } + received.map { it.sender_id })
             .distinct()
             .filter { it != uid }
 
-        val users = mutableListOf<User>()
+        val partners = mutableListOf<ChatPartner>()
         partnerIds.forEach { pid ->
             val doc = db.collection("users").document(pid).get().await()
-            doc.toObject(User::class.java)?.copy(id = doc.id)?.let { users.add(it) }
+            val user = doc.toObject(User::class.java)?.copy(id = doc.id)
+            if (user != null) {
+                val lastMsg = allMessages.firstOrNull { it.sender_id == pid || it.receiver_id == pid }
+                partners.add(ChatPartner(user, lastMsg))
+            }
         }
-        users
+        partners.sortedByDescending { it.lastMessage?.timestamp }
+    }
+
+    suspend fun getCurrentUser(): User? {
+        val uid = currentUid ?: return null
+        return db.collection("users").document(uid).get().await()
+            .toObject(User::class.java)?.copy(id = uid)
+    }
+
+    suspend fun updateNote(note: String): Result<Unit> = runCatching {
+        val uid = currentUid ?: throw Exception("Not logged in")
+        db.collection("users").document(uid).update("note", note).await()
     }
 
     suspend fun getUser(uid: String): User? {
