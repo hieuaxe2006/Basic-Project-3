@@ -88,7 +88,14 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
         composable(route = Screen.Profile.route, arguments = listOf(navArgument("uid") { type = NavType.StringType; nullable = true; defaultValue = null })) { backStackEntry ->
             val uid = backStackEntry.arguments?.getString("uid")
             val profileViewModel: ProfileViewModel = viewModel()
-            ProfileScreen(viewModel = profileViewModel, uid = uid, onBack = { navController.popBackStack() })
+            ProfileScreen(
+                viewModel = profileViewModel, 
+                uid = uid, 
+                onBack = { navController.popBackStack() },
+                onNavigateToChat = { targetUid, name ->
+                    navController.navigate(Screen.Chat.createRoute(targetUid, name))
+                }
+            )
         }
 
         composable(Screen.Explore.route) { ExploreScreen(onNavigateBack = { navController.popBackStack() }) }

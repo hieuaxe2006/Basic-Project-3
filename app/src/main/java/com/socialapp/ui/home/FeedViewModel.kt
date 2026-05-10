@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.socialapp.data.model.Post
 import com.socialapp.data.model.User
+import com.socialapp.data.repository.ChatRepository
 import com.socialapp.data.repository.SocialRepository
 import kotlinx.coroutines.launch
 
@@ -19,11 +20,18 @@ data class FeedState(
     val savedIds: Set<String> = emptySet(),
     val followingIds: Set<String> = emptySet(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val friendsList: List<User> = emptyList(),
+    val isListLoading: Boolean = false,
+    val isSharing: Boolean = false,
+    val shareSuccess: String? = null,
+    val searchResults: List<User> = emptyList(),
+    val isSearching: Boolean = false
 )
 
 class FeedViewModel : ViewModel() {
     private val repo = SocialRepository()
+    private val chatRepo = ChatRepository()
     var state by mutableStateOf(FeedState())
         private set
     val currentUid get() = repo.currentUid
@@ -64,6 +72,46 @@ class FeedViewModel : ViewModel() {
                 state = state.copy(posts = updatedPosts, likedIds = updatedLikedIds)
             }
         }
+    }
+
+    fun loadFriends() {
+        viewModelScope.launch {
+            state = state.copy(isListLoading = true)
+            repo.getFriends()
+                .onSuccess { state = state.copy(isListLoading = false, friendsList = it) }
+                .onFailure { state = state.copy(isListLoading = false, error = it.message) }
+        }
+    }
+
+    fun searchUsers(query: String) {
+        if (query.isBlank()) {
+            state = state.copy(searchResults = emptyList())
+            return
+        }
+        viewModelScope.launch {
+            state = state.copy(isSearching = true)
+            repo.searchUsers(query)
+                .onSuccess { state = state.copy(isSearching = false, searchResults = it) }
+                .onFailure { state = state.copy(isSearching = false) }
+        }
+    }
+
+    fun sharePost(post: Post, friend: User) {
+        viewModelScope.launch {
+            state = state.copy(isSharing = true, shareSuccess = null)
+            val shareContent = "Chia sẻ bài viết:\n${post.content}\n${post.image_url}".trim()
+            chatRepo.sendMessage(friend.id, shareContent)
+                .onSuccess {
+                    state = state.copy(isSharing = false, shareSuccess = "Đã gửi đến ${friend.username}")
+                }
+                .onFailure {
+                    state = state.copy(isSharing = false, error = it.message)
+                }
+        }
+    }
+
+    fun clearShareState() {
+        state = state.copy(shareSuccess = null)
     }
 
     fun toggleSave(postId: String) = viewModelScope.launch { repo.toggleSavePost(postId) }

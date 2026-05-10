@@ -3,17 +3,31 @@ package com.socialapp.ui.chat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.socialapp.data.model.Message
 import kotlinx.coroutines.launch
 
@@ -30,7 +44,9 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(otherUid) { viewModel.startListening(otherUid) }
+    LaunchedEffect(otherUid) { 
+        viewModel.startListening(otherUid) 
+    }
 
     LaunchedEffect(state.messages.size) {
         if (state.messages.isNotEmpty()) {
@@ -41,12 +57,36 @@ fun ChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(otherName) },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // User Avatar placeholder or logic if available
+                        Surface(
+                            modifier = Modifier.size(36.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(otherName.take(1).uppercase(), fontSize = 14.sp)
+                            }
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text(otherName, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                            Text("Đang hoạt động", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.primary)
                     }
-                }
+                },
+                actions = {
+                    IconButton(onClick = {}) { Icon(Icons.Filled.Call, null, tint = MaterialTheme.colorScheme.primary) }
+                    IconButton(onClick = {}) { Icon(Icons.Filled.Videocam, null, tint = MaterialTheme.colorScheme.primary) }
+                    IconButton(onClick = {}) { Icon(Icons.Filled.Info, null, tint = MaterialTheme.colorScheme.primary) }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         },
         bottomBar = {
@@ -54,25 +94,42 @@ fun ChatScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(8.dp),
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    IconButton(onClick = {}) { Icon(Icons.Filled.Add, null, tint = MaterialTheme.colorScheme.primary) }
+                    IconButton(onClick = {}) { Icon(Icons.Filled.CameraAlt, null, tint = MaterialTheme.colorScheme.primary) }
+                    IconButton(onClick = {}) { Icon(Icons.Filled.Photo, null, tint = MaterialTheme.colorScheme.primary) }
+                    
                     OutlinedTextField(
                         value = input,
                         onValueChange = { input = it },
-                        placeholder = { Text("Type a message...") },
-                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("Tin nhắn") },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 4.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = Color.Transparent
+                        ),
                         singleLine = true
                     )
-                    Spacer(Modifier.width(8.dp))
-                    IconButton(
-                        onClick = {
-                            viewModel.sendMessage(otherUid, input)
-                            input = ""
-                        },
-                        enabled = input.isNotBlank() && !state.isSending
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Send, "Send")
+                    
+                    if (input.isNotBlank()) {
+                        IconButton(
+                            onClick = {
+                                viewModel.sendMessage(otherUid, input)
+                                input = ""
+                            },
+                            enabled = !state.isSending
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Send, "Send", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    } else {
+                        IconButton(onClick = {}) { Icon(Icons.Filled.ThumbUp, null, tint = MaterialTheme.colorScheme.primary) }
                     }
                 }
             }
@@ -82,15 +139,18 @@ fun ChatScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 8.dp),
+                .background(MaterialTheme.colorScheme.background),
             state = listState,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            contentPadding = PaddingValues(vertical = 8.dp)
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
         ) {
-            items(state.messages, key = { it.id }) { message ->
+            itemsIndexed(state.messages, key = { _, msg -> msg.id }) { index, message ->
+                val isOwn = message.sender_id == viewModel.currentUid
+                val showAvatar = !isOwn && (index == 0 || state.messages[index-1].sender_id != message.sender_id)
+                
                 MessageBubble(
                     message = message,
-                    isOwn = message.sender_id == viewModel.currentUid
+                    isOwn = isOwn,
+                    showAvatar = showAvatar
                 )
             }
         }
@@ -98,26 +158,64 @@ fun ChatScreen(
 }
 
 @Composable
-private fun MessageBubble(message: Message, isOwn: Boolean) {
-    Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = if (isOwn) Alignment.CenterEnd else Alignment.CenterStart
+private fun MessageBubble(message: Message, isOwn: Boolean, showAvatar: Boolean) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 1.dp),
+        horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Bottom
     ) {
+        if (!isOwn) {
+            if (showAvatar) {
+                Surface(
+                    modifier = Modifier.size(28.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(message.sender_id.take(1), fontSize = 10.sp)
+                    }
+                }
+            } else {
+                Spacer(Modifier.width(28.dp))
+            }
+            Spacer(Modifier.width(8.dp))
+        }
+
         Surface(
             shape = RoundedCornerShape(
-                topStart = 12.dp,
-                topEnd = 12.dp,
-                bottomStart = if (isOwn) 12.dp else 4.dp,
-                bottomEnd = if (isOwn) 4.dp else 12.dp
+                topStart = 18.dp,
+                topEnd = 18.dp,
+                bottomStart = if (isOwn) 18.dp else 4.dp,
+                bottomEnd = if (isOwn) 4.dp else 18.dp
             ),
             color = if (isOwn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-            modifier = Modifier.widthIn(max = 280.dp)
+            modifier = Modifier.widthIn(max = 260.dp)
         ) {
-            Text(
-                text = message.content,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                color = if (isOwn) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                Text(
+                    text = message.content,
+                    color = if (isOwn) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                    fontSize = 15.sp
+                )
+                
+                if (message.content.contains("http")) {
+                    val imageUrl = message.content.substringAfterLast("\n").trim()
+                    if (imageUrl.startsWith("http")) {
+                        Spacer(Modifier.height(8.dp))
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(150.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+            }
         }
     }
 }
