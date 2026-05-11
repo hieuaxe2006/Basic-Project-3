@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.*
@@ -40,7 +41,8 @@ fun ProfileScreen(
     viewModel: ProfileViewModel,
     uid: String? = null,
     onBack: (() -> Unit)? = null,
-    onNavigateToChat: (String, String) -> Unit = { _, _ -> }
+    onNavigateToChat: (String, String) -> Unit = { _, _ -> },
+    onLogout: () -> Unit // Thêm callback để thực hiện đăng xuất
 ) {
     val context = LocalContext.current
     LaunchedEffect(uid) { viewModel.loadProfile(uid) }
@@ -50,6 +52,7 @@ fun ProfileScreen(
     var showFollowingSheet by remember { mutableStateOf(false) }
     var showPasswordSheet by remember { mutableStateOf(false) }
     var showShareSheet by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) } // State cho hộp thoại đăng xuất
     var postToShare by remember { mutableStateOf<Post?>(null) }
 
     LaunchedEffect(state.shareSuccess) {
@@ -62,12 +65,12 @@ fun ProfileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
-                        state.user?.username ?: "Trang cá nhân", 
+                        state.user?.username ?: "Trang cá nhân",
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp
-                    ) 
+                    )
                 },
                 navigationIcon = {
                     if (onBack != null) {
@@ -83,6 +86,14 @@ fun ProfileScreen(
                         }
                         IconButton(onClick = { viewModel.toggleEdit() }) {
                             Icon(Icons.Default.Edit, "Chỉnh sửa")
+                        }
+                        // Nút Đăng xuất
+                        IconButton(onClick = { showLogoutDialog = true }) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ExitToApp,
+                                contentDescription = "Đăng xuất",
+                                tint = MaterialTheme.colorScheme.error
+                            )
                         }
                     }
                 },
@@ -139,6 +150,32 @@ fun ProfileScreen(
         }
     }
 
+    // Hộp thoại xác nhận đăng xuất
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Đăng xuất") },
+            text = { Text("Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng không?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutDialog = false
+                        onLogout()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Đăng xuất")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
+
+    // Các ModalBottomSheet giữ nguyên
     if (showFollowersSheet) {
         ModalBottomSheet(onDismissRequest = { showFollowersSheet = false }) {
             UserListContent(
@@ -215,7 +252,6 @@ private fun ProfileContent(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         item {
-            // Header Section
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surface
@@ -224,7 +260,6 @@ private fun ProfileContent(
                     modifier = Modifier.padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Avatar with edit button
                     Box(contentAlignment = Alignment.BottomEnd) {
                         Surface(
                             modifier = Modifier.size(120.dp),
@@ -272,20 +307,18 @@ private fun ProfileContent(
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
-                    
+
                     if (user.bio.isNotBlank()) {
                         Text(
                             user.bio,
                             modifier = Modifier.padding(top = 4.dp, start = 32.dp, end = 32.dp),
                             textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
 
                     Spacer(Modifier.height(16.dp))
 
-                    // Stats row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
@@ -296,7 +329,6 @@ private fun ProfileContent(
 
                     Spacer(Modifier.height(16.dp))
 
-                    // Action Buttons
                     if (isOwnProfile) {
                         Button(
                             onClick = { viewModel.toggleEdit() },
@@ -348,55 +380,34 @@ private fun ProfileContent(
         }
 
         item {
-            Spacer(Modifier.height(8.dp))
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                Column {
-                    var selectedTabIndex by remember { mutableIntStateOf(0) }
-                    TabRow(
-                        selectedTabIndex = selectedTabIndex,
-                        containerColor = Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.primary
-                    ) {
-                        Tab(
-                            selected = selectedTabIndex == 0,
-                            onClick = { selectedTabIndex = 0 },
-                            text = { Text("Bài viết", fontWeight = FontWeight.Bold) }
-                        )
-                        if (isOwnProfile) {
-                            Tab(
-                                selected = selectedTabIndex == 1,
-                                onClick = { selectedTabIndex = 1 },
-                                text = { Text("Đã lưu", fontWeight = FontWeight.Bold) }
-                            )
-                        }
-                    }
+            var selectedTabIndex by remember { mutableIntStateOf(0) }
+            TabRow(selectedTabIndex = selectedTabIndex) {
+                Tab(
+                    selected = selectedTabIndex == 0,
+                    onClick = { selectedTabIndex = 0 },
+                    text = { Text("Bài viết", fontWeight = FontWeight.Bold) }
+                )
+                if (isOwnProfile) {
+                    Tab(
+                        selected = selectedTabIndex == 1,
+                        onClick = { selectedTabIndex = 1 },
+                        text = { Text("Đã lưu", fontWeight = FontWeight.Bold) }
+                    )
+                }
+            }
 
-                    val posts = if (selectedTabIndex == 0) viewModel.state.postedPosts else viewModel.state.savedPosts
-                    if (viewModel.state.isPostsLoading) {
-                        Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
-                    } else if (posts.isEmpty()) {
-                        Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                            Text("Chưa có nội dung nào để hiển thị", color = Color.Gray)
-                        }
-                    } else {
-                        // We display posts in the same LazyColumn
-                    }
+            if (viewModel.state.isPostsLoading) {
+                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
             }
         }
 
-        val posts = if (viewModel.state.postedPosts.isNotEmpty()) viewModel.state.postedPosts else emptyList() // Simple logic for display
-        // Actually we need to handle the selected tab's posts
-        // For simplicity in this UI update, I'll just list them.
-        
-        items(if (viewModel.state.postedPosts.isNotEmpty()) viewModel.state.postedPosts else emptyList()) { post ->
+        val posts = if (viewModel.state.postedPosts.isNotEmpty()) viewModel.state.postedPosts else emptyList()
+
+        items(posts) { post ->
             PostThumbnail(
-                post = post, 
+                post = post,
                 onShareClick = { onShareClick(post) }
             )
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
@@ -417,10 +428,7 @@ private fun StatItem(count: String, label: String, onClick: () -> Unit) {
 
 @Composable
 private fun PostThumbnail(post: Post, onShareClick: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface
-    ) {
+    Surface(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 post.content,
@@ -431,30 +439,22 @@ private fun PostThumbnail(post: Post, onShareClick: () -> Unit) {
             if (post.image_url.isNotBlank()) {
                 Spacer(Modifier.height(12.dp))
                 AsyncImage(
-                    model = post.image_url, 
-                    contentDescription = null, 
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 300.dp)
-                        .clip(RoundedCornerShape(8.dp)), 
+                    model = post.image_url,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp).clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Crop
                 )
             }
             Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Favorite, null, modifier = Modifier.size(16.dp), tint = Color(0xFFE41E3F))
-                Text(" ${post.like_count}", fontSize = 13.sp, color = Color.Gray)
+                Icon(Icons.Default.Favorite, null, modifier = Modifier.size(16.dp), tint = Color.Red)
+                Text(" ${post.like_count}", fontSize = 13.sp)
                 Spacer(Modifier.width(16.dp))
-                Icon(Icons.Outlined.ChatBubbleOutline, null, modifier = Modifier.size(16.dp), tint = Color.Gray)
-                Text(" ${post.comment_count}", fontSize = 13.sp, color = Color.Gray)
-                
+                Icon(Icons.Outlined.ChatBubbleOutline, null, modifier = Modifier.size(16.dp))
+                Text(" ${post.comment_count}", fontSize = 13.sp)
                 Spacer(Modifier.weight(1f))
-                
-                IconButton(
-                    onClick = onShareClick,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(Icons.Default.Share, null, modifier = Modifier.size(18.dp), tint = Color.Gray)
+                IconButton(onClick = onShareClick, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.Share, null, modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -473,41 +473,16 @@ private fun EditProfileContent(
     var bio by remember(user) { mutableStateOf(user.bio) }
 
     Column(modifier = modifier.fillMaxSize().padding(24.dp)) {
-        Text("Chỉnh sửa trang cá nhân", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text("Chỉnh sửa thông tin", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
-        
-        OutlinedTextField(
-            value = username,
-            onValueChange = { username = it },
-            label = { Text("Tên hiển thị") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
-        )
+        OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Tên hiển thị") }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(16.dp))
-        OutlinedTextField(
-            value = bio,
-            onValueChange = { bio = it },
-            label = { Text("Tiểu sử") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 3,
-            shape = RoundedCornerShape(8.dp)
-        )
+        OutlinedTextField(value = bio, onValueChange = { bio = it }, label = { Text("Tiểu sử") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
         Spacer(Modifier.height(32.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(
-                onClick = onCancel,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text("Hủy")
-            }
-            Button(
-                onClick = { onSave(username, bio) },
-                modifier = Modifier.weight(1f),
-                enabled = !isSaving,
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                if (isSaving) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White) else Text("Lưu thay đổi")
+            OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Hủy") }
+            Button(onClick = { onSave(username, bio) }, modifier = Modifier.weight(1f), enabled = !isSaving) {
+                if (isSaving) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White) else Text("Lưu")
             }
         }
     }
@@ -524,80 +499,42 @@ private fun ShareSheetContent(
     onFriendClick: (User) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    
     Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.8f).padding(16.dp)) {
         Text("Gửi bài viết", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
-        
         OutlinedTextField(
             value = searchQuery,
-            onValueChange = { 
-                searchQuery = it
-                onSearch(it)
-            },
+            onValueChange = { searchQuery = it; onSearch(it) },
             placeholder = { Text("Tìm kiếm bạn bè...") },
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = { Icon(Icons.Default.Search, null) },
-            shape = RoundedCornerShape(24.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                unfocusedBorderColor = Color.Transparent,
-                focusedBorderColor = Color.Transparent
-            ),
-            singleLine = true
+            shape = RoundedCornerShape(24.dp)
         )
-        
         Spacer(Modifier.height(16.dp))
-        
         val displayList = if (searchQuery.isBlank()) friends else searchResults
-        val showLoading = isLoading || isSearching
-
-        if (showLoading && displayList.isEmpty()) {
+        if (isLoading || isSearching) {
             Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        } else if (displayList.isEmpty() && !showLoading) {
-            Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { 
-                Text("Không tìm thấy kết quả") 
-            }
         } else {
-            LazyColumn(modifier = Modifier.weight(1f)) {
+            LazyColumn {
                 items(displayList) { user ->
-                    UserShareItem(
-                        user = user,
-                        isSharing = isSharing,
-                        onClick = { onFriendClick(user) }
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { if (!isSharing) onFriendClick(user) }.padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (user.avatar.isNotBlank()) {
+                            AsyncImage(model = user.avatar, contentDescription = null, modifier = Modifier.size(44.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+                        } else {
+                            Surface(Modifier.size(44.dp), shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer) {
+                                Box(contentAlignment = Alignment.Center) { Text(user.username.take(1).uppercase()) }
+                            }
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Text(user.username, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
+                        if (isSharing) CircularProgressIndicator(Modifier.size(16.dp))
+                    }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun UserShareItem(user: User, isSharing: Boolean, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { if (!isSharing) onClick() }
-            .padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (user.avatar.isNotBlank()) {
-            AsyncImage(
-                model = user.avatar,
-                contentDescription = null,
-                modifier = Modifier.size(44.dp).clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            Surface(Modifier.size(44.dp), shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer) {
-                Box(contentAlignment = Alignment.Center) { Text(user.username.take(1).uppercase()) }
-            }
-        }
-        Spacer(Modifier.width(12.dp))
-        Text(user.username, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
-        if (isSharing) CircularProgressIndicator(Modifier.size(16.dp))
-        else Icon(Icons.AutoMirrored.Filled.Chat, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -607,22 +544,17 @@ private fun UserListContent(title: String, users: List<User>, isLoading: Boolean
         Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         if (isLoading) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        else if (users.isEmpty()) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Chưa có ai ở đây") }
-        else LazyColumn { items(users) { user -> UserItem(user) } }
-    }
-}
-
-@Composable
-private fun UserItem(user: User) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        if (user.avatar.isNotBlank()) AsyncImage(model = user.avatar, contentDescription = null, modifier = Modifier.size(48.dp).clip(CircleShape), contentScale = ContentScale.Crop)
-        else Surface(modifier = Modifier.size(48.dp), shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer) {
-            Box(contentAlignment = Alignment.Center) { Text(user.username.take(1).uppercase()) }
-        }
-        Spacer(Modifier.width(12.dp))
-        Column {
-            Text(user.username, fontWeight = FontWeight.Bold)
-            if (user.bio.isNotBlank()) Text(user.bio, style = MaterialTheme.typography.bodySmall, color = Color.Gray, maxLines = 1)
+        else LazyColumn {
+            items(users) { user ->
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                    if (user.avatar.isNotBlank()) AsyncImage(model = user.avatar, contentDescription = null, modifier = Modifier.size(48.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+                    else Surface(modifier = Modifier.size(48.dp), shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer) {
+                        Box(contentAlignment = Alignment.Center) { Text(user.username.take(1).uppercase()) }
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Text(user.username, fontWeight = FontWeight.Bold)
+                }
+            }
         }
     }
 }
@@ -636,19 +568,19 @@ private fun ChangePasswordContent(isLoading: Boolean, success: Boolean, error: S
         Text("Đổi mật khẩu", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
         if (success) {
-            Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(64.dp))
-            Text("Đổi mật khẩu thành công!", fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 16.dp))
-            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth().padding(top = 24.dp), shape = RoundedCornerShape(8.dp)) { Text("Đóng") }
+            Icon(Icons.Default.CheckCircle, null, tint = Color.Green, modifier = Modifier.size(64.dp))
+            Text("Thành công!", modifier = Modifier.padding(top = 16.dp))
+            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth().padding(top = 24.dp)) { Text("Đóng") }
         } else {
-            OutlinedTextField(value = current, onValueChange = { current = it }, label = { Text("Mật khẩu hiện tại") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp))
+            OutlinedTextField(value = current, onValueChange = { current = it }, label = { Text("Mật khẩu hiện tại") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
-            OutlinedTextField(value = new, onValueChange = { new = it }, label = { Text("Mật khẩu mới") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp))
+            OutlinedTextField(value = new, onValueChange = { new = it }, label = { Text("Mật khẩu mới") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
-            OutlinedTextField(value = confirm, onValueChange = { confirm = it }, label = { Text("Xác nhận mật khẩu mới") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp))
-            error?.let { Text(it, color = Color.Red, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp)) }
+            OutlinedTextField(value = confirm, onValueChange = { confirm = it }, label = { Text("Xác nhận mật khẩu") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+            if (error != null) Text(error, color = Color.Red, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(32.dp))
-            Button(onClick = { onSubmit(current, new) }, enabled = !isLoading && current.isNotBlank() && new.length >= 6 && new == confirm, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) {
-                if (isLoading) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White) else Text("Cập nhật mật khẩu")
+            Button(onClick = { onSubmit(current, new) }, enabled = !isLoading && current.isNotBlank() && new == confirm, modifier = Modifier.fillMaxWidth()) {
+                if (isLoading) CircularProgressIndicator(Modifier.size(20.dp)) else Text("Cập nhật")
             }
         }
     }

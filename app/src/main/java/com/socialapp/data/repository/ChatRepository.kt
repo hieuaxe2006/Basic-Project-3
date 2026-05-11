@@ -9,9 +9,11 @@ import com.socialapp.data.model.Message
 import com.socialapp.data.model.User
 import kotlinx.coroutines.tasks.await
 
+// Cấu trúc đối tác chat: Thêm unreadCount để hiển thị tín hiệu tin nhắn mới
 data class ChatPartner(
     val user: User,
-    val lastMessage: Message? = null
+    val lastMessage: Message? = null,
+    val unreadCount: Int = 0
 )
 
 class ChatRepository {
@@ -19,6 +21,7 @@ class ChatRepository {
     private val auth = FirebaseAuth.getInstance()
     val currentUid get() = auth.currentUser?.uid
 
+    // Gửi tin nhắn: Mặc định seen = false
     suspend fun sendMessage(receiverId: String, content: String): Result<Unit> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
         val docRef = db.collection("messages").document()
@@ -27,11 +30,31 @@ class ChatRepository {
             sender_id = uid,
             receiver_id = receiverId,
             content = content,
-            timestamp = Timestamp.now()
+            timestamp = Timestamp.now(),
+            seen = false
         )
         docRef.set(message).await()
     }
 
+    // Đánh dấu đã xem: Tìm các tin nhắn đối phương gửi cho mình mà chưa xem -> chuyển thành true
+    suspend fun markAsRead(otherUid: String): Result<Unit> = runCatching {
+        val uid = currentUid ?: return@runCatching
+        val unreadQuery = db.collection("messages")
+            .whereEqualTo("sender_id", otherUid)
+            .whereEqualTo("receiver_id", uid)
+            .whereEqualTo("seen", false)
+            .get().await()
+
+        if (!unreadQuery.isEmpty) {
+            val batch = db.batch()
+            unreadQuery.documents.forEach { doc ->
+                batch.update(doc.reference, "seen", true)
+            }
+            batch.commit().await()
+        }
+    }
+
+    // Lắng nghe tin nhắn thời gian thực
     fun listenMessages(
         otherUid: String,
         onUpdate: (List<Message>) -> Unit
@@ -44,15 +67,17 @@ class ChatRepository {
                 val all = snapshot?.toObjects(Message::class.java) ?: emptyList()
                 val filtered = all.filter {
                     (it.sender_id == uid && it.receiver_id == otherUid) ||
-                    (it.sender_id == otherUid && it.receiver_id == uid)
+                            (it.sender_id == otherUid && it.receiver_id == uid)
                 }
                 onUpdate(filtered)
             }
     }
 
+    // Lấy danh sách các cuộc trò chuyện và đếm tin nhắn chưa đọc
     suspend fun getChatPartners(): Result<List<ChatPartner>> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
 
+        // Lấy tất cả tin nhắn liên quan đến tôi
         val sent = db.collection("messages")
             .whereEqualTo("sender_id", uid)
             .get().await()
@@ -74,9 +99,14 @@ class ChatRepository {
             val user = doc.toObject(User::class.java)?.copy(id = doc.id)
             if (user != null) {
                 val lastMsg = allMessages.firstOrNull { it.sender_id == pid || it.receiver_id == pid }
-                partners.add(ChatPartner(user, lastMsg))
+
+                // Đếm số tin nhắn từ đối tác này gửi cho mình mà mình chưa xem
+                val unreadCount = received.count { it.sender_id == pid && !it.seen }
+
+                partners.add(ChatPartner(user, lastMsg, unreadCount))
             }
         }
+        // Sắp xếp danh sách: Cuộc trò chuyện có tin nhắn mới nhất lên đầu
         partners.sortedByDescending { it.lastMessage?.timestamp }
     }
 
@@ -89,11 +119,6 @@ class ChatRepository {
     suspend fun updateNote(note: String): Result<Unit> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
         db.collection("users").document(uid).update("note", note).await()
-    }
-
-    suspend fun getUser(uid: String): User? {
-        return db.collection("users").document(uid).get().await()
-            .toObject(User::class.java)?.copy(id = uid)
     }
 
     suspend fun searchUsers(query: String): Result<List<User>> = runCatching {

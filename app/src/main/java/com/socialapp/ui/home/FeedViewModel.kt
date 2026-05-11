@@ -5,6 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.socialapp.data.model.Post
 import com.socialapp.data.model.User
 import com.socialapp.data.repository.ChatRepository
@@ -26,12 +28,17 @@ data class FeedState(
     val isSharing: Boolean = false,
     val shareSuccess: String? = null,
     val searchResults: List<User> = emptyList(),
-    val isSearching: Boolean = false
+    val isSearching: Boolean = false,
+    // THÊM: Số lượng tin nhắn chưa đọc toàn cục
+    val unreadChatCount: Int = 0
 )
 
 class FeedViewModel : ViewModel() {
     private val repo = SocialRepository()
     private val chatRepo = ChatRepository()
+    private val db = FirebaseFirestore.getInstance()
+    private var messageListener: ListenerRegistration? = null
+
     var state by mutableStateOf(FeedState())
         private set
     val currentUid get() = repo.currentUid
@@ -41,6 +48,20 @@ class FeedViewModel : ViewModel() {
         loadCurrentUser()
         observeSavedPosts()
         observeFollowing()
+        observeUnreadMessages() // Bắt đầu lắng nghe tin nhắn mới
+    }
+
+    // THÊM: Lắng nghe tin nhắn chưa đọc thời gian thực
+    private fun observeUnreadMessages() {
+        val uid = currentUid ?: return
+        messageListener?.remove()
+        messageListener = db.collection("messages")
+            .whereEqualTo("receiver_id", uid)
+            .whereEqualTo("seen", false)
+            .addSnapshotListener { snapshot, _ ->
+                val count = snapshot?.size() ?: 0
+                state = state.copy(unreadChatCount = count)
+            }
     }
 
     private fun loadCurrentUser() {
@@ -118,4 +139,9 @@ class FeedViewModel : ViewModel() {
     fun toggleFollow(targetUid: String) = viewModelScope.launch { repo.toggleFollow(targetUid) }
     private fun observeSavedPosts() = viewModelScope.launch { repo.getSavedPostIdsFlow().collect { state = state.copy(savedIds = it) } }
     private fun observeFollowing() = viewModelScope.launch { repo.getFollowingIdsFlow().collect { state = state.copy(followingIds = it) } }
+
+    override fun onCleared() {
+        messageListener?.remove()
+        super.onCleared()
+    }
 }

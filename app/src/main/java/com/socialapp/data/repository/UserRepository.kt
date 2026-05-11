@@ -1,6 +1,5 @@
 package com.socialapp.data.repository
 
-import com.google.firebase.Timestamp
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -16,16 +15,19 @@ class UserRepository {
 
     val currentUid get() = auth.currentUser?.uid
 
+    // Thêm hàm này để lưu Token FCM vào Firestore
+    suspend fun updateFcmToken(token: String): Result<Unit> = runCatching {
+        val uid = currentUid ?: return@runCatching
+        db.collection("users").document(uid).update("fcm_token", token).await()
+    }
+
     suspend fun getUser(uid: String): Result<User> = runCatching {
         val doc = db.collection("users").document(uid).get().await()
         doc.toObject(User::class.java)?.copy(id = doc.id) ?: throw Exception("User not found")
     }
 
     suspend fun updateProfile(uid: String, username: String, bio: String, avatar: String?): Result<Unit> = runCatching {
-        val updates = mutableMapOf<String, Any>(
-            "username" to username,
-            "bio" to bio
-        )
+        val updates = mutableMapOf<String, Any>("username" to username, "bio" to bio)
         avatar?.let { updates["avatar"] = it }
         db.collection("users").document(uid).update(updates).await()
     }
@@ -44,48 +46,30 @@ class UserRepository {
 
     fun getUserSnapshot(uid: String): Flow<User> = callbackFlow {
         val listener = db.collection("users").document(uid).addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                close(error)
-                return@addSnapshotListener
-            }
-            if (snapshot != null && snapshot.exists()) {
-                val user = snapshot.toObject(User::class.java)?.copy(id = snapshot.id)
-                if (user != null) {
-                    trySend(user)
-                }
-            }
+            if (error != null) { close(error); return@addSnapshotListener }
+            snapshot?.toObject(User::class.java)?.copy(id = snapshot.id)?.let { trySend(it) }
         }
         awaitClose { listener.remove() }
     }
 
     suspend fun getFollowers(uid: String): Result<List<User>> = runCatching {
-        val query = db.collection("follows")
-            .whereEqualTo("following_id", uid)
-            .get().await()
-        
+        val query = db.collection("follows").whereEqualTo("following_id", uid).get().await()
         val followerIds = query.documents.mapNotNull { it.getString("follower_id") }
         if (followerIds.isEmpty()) return@runCatching emptyList()
-
         val result = mutableListOf<User>()
         followerIds.chunked(10).forEach { chunk ->
-            val usersQuery = db.collection("users").whereIn("id", chunk).get().await()
-            result.addAll(usersQuery.toObjects(User::class.java))
+            result.addAll(db.collection("users").whereIn("id", chunk).get().await().toObjects(User::class.java))
         }
         result
     }
 
     suspend fun getFollowing(uid: String): Result<List<User>> = runCatching {
-        val query = db.collection("follows")
-            .whereEqualTo("follower_id", uid)
-            .get().await()
-        
+        val query = db.collection("follows").whereEqualTo("follower_id", uid).get().await()
         val followingIds = query.documents.mapNotNull { it.getString("following_id") }
         if (followingIds.isEmpty()) return@runCatching emptyList()
-
         val result = mutableListOf<User>()
         followingIds.chunked(10).forEach { chunk ->
-            val usersQuery = db.collection("users").whereIn("id", chunk).get().await()
-            result.addAll(usersQuery.toObjects(User::class.java))
+            result.addAll(db.collection("users").whereIn("id", chunk).get().await().toObjects(User::class.java))
         }
         result
     }

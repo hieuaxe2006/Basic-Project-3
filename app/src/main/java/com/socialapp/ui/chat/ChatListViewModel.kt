@@ -29,7 +29,7 @@ class ChatListViewModel : ViewModel() {
     var state by mutableStateOf(ChatListState())
         private set
 
-    init { 
+    init {
         loadChatPartners()
         loadPendingRequests()
         loadCurrentUser()
@@ -43,12 +43,17 @@ class ChatListViewModel : ViewModel() {
         }
     }
 
+    // Hàm này sẽ lấy danh sách các cuộc hội thoại bao gồm số tin nhắn chưa đọc (unreadCount)
     fun loadChatPartners() {
         viewModelScope.launch {
             state = state.copy(isLoading = true, error = null)
             repo.getChatPartners()
-                .onSuccess { state = state.copy(isLoading = false, partners = it) }
-                .onFailure { state = state.copy(isLoading = false, error = it.message) }
+                .onSuccess {
+                    state = state.copy(isLoading = false, partners = it)
+                }
+                .onFailure {
+                    state = state.copy(isLoading = false, error = it.message)
+                }
         }
     }
 

@@ -16,6 +16,10 @@ sealed class Screen(val route: String) {
         fun createRoute(uid: String, name: String) = "chat/$uid/$name"
     }
     object Explore : Screen("explore")
+    // THÊM MỚI
+    object CategoryFeed : Screen("category_feed/{tag}") {
+        fun createRoute(tag: String) = "category_feed/$tag"
+    }
     object Settings : Screen("settings")
     object Search : Screen("search/{query}") {
         fun createRoute(query: String) = "search/$query"

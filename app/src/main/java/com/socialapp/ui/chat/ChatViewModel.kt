@@ -26,9 +26,23 @@ class ChatViewModel : ViewModel() {
     val currentUid get() = repo.currentUid
 
     fun startListening(otherUid: String) {
+        // NGAY KHI MỞ CHAT: Đánh dấu tất cả tin nhắn từ người này gửi cho mình là đã xem
+        viewModelScope.launch {
+            repo.markAsRead(otherUid)
+        }
+
         listener?.remove()
         listener = repo.listenMessages(otherUid) { messages ->
             state = state.copy(messages = messages)
+
+            // KIỂM TRA REALTIME: Nếu đang mở màn hình chat mà đối phương gửi tin nhắn tới,
+            // tự động cập nhật tin nhắn đó thành "đã xem" ngay lập tức.
+            val hasUnreadFromPartner = messages.any { it.sender_id == otherUid && !it.seen }
+            if (hasUnreadFromPartner) {
+                viewModelScope.launch {
+                    repo.markAsRead(otherUid)
+                }
+            }
         }
     }
 
