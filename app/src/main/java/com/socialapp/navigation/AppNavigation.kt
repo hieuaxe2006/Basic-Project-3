@@ -13,7 +13,7 @@ import com.socialapp.ui.comment.*
 import com.socialapp.ui.home.HomeScreen
 import com.socialapp.ui.post.*
 import com.socialapp.ui.profile.*
-import com.socialapp.ui.explore.ExploreScreen
+import com.socialapp.ui.explore.*
 import com.socialapp.ui.search.SearchScreen
 import com.socialapp.ui.settings.SettingsScreen
 import com.socialapp.ui.admin.AdminDashboardScreen
@@ -24,27 +24,32 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
     val navController = rememberNavController()
     val authState = authViewModel.state
 
-    // Xác định màn hình bắt đầu
+    // Xác định màn hình bắt đầu dựa trên trạng thái đăng nhập và vai trò
     val startDest = when {
         !authState.isLoggedIn -> Screen.Login.route
         authState.userRole == "admin" -> Screen.Admin.route
         else -> Screen.Home.route
     }
 
-    // Chờ lấy role từ Firebase
+    // Chờ lấy thông tin người dùng từ Firebase trước khi hiển thị nội dung
     if (authState.isLoggedIn && authState.userRole == null) return
 
     NavHost(navController = navController, startDestination = startDest) {
+        // --- Màn hình Đăng nhập ---
         composable(Screen.Login.route) {
             LoginScreen(viewModel = authViewModel, onNavigateToRegister = {
                 navController.navigate(Screen.Register.route)
             })
         }
 
+        // --- Màn hình Đăng ký ---
         composable(Screen.Register.route) {
-            RegisterScreen(viewModel = authViewModel, onNavigateToLogin = { navController.popBackStack() })
+            RegisterScreen(viewModel = authViewModel, onNavigateToLogin = {
+                navController.popBackStack()
+            })
         }
 
+        // --- Màn hình Trang chủ (Feed) ---
         composable(Screen.Home.route) {
             HomeScreen(
                 onLogout = {
@@ -62,48 +67,120 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
             )
         }
 
+        // --- Màn hình Admin ---
         composable(Screen.Admin.route) {
-            val adminVM: AdminViewModel = viewModel()
             AdminDashboardScreen(
                 onLogout = {
                     authViewModel.logout()
                     navController.navigate(Screen.Login.route) { popUpTo(0) }
-                },
-                vm = adminVM
+                }
             )
         }
 
+        // --- Màn hình Tạo bài viết ---
         composable(Screen.CreatePost.route) {
-            CreatePostScreen(viewModel = viewModel(), onBack = { navController.popBackStack() }, onPostCreated = { navController.popBackStack() })
+            CreatePostScreen(
+                viewModel = viewModel(),
+                onBack = { navController.popBackStack() },
+                onPostCreated = { navController.popBackStack() }
+            )
         }
 
-        composable(route = Screen.Comments.route, arguments = listOf(navArgument("postId") { type = NavType.StringType })) { bse ->
+        // --- Màn hình Bình luận ---
+        composable(
+            route = Screen.Comments.route,
+            arguments = listOf(navArgument("postId") { type = NavType.StringType })
+        ) { bse ->
             val pid = bse.arguments?.getString("postId") ?: return@composable
             CommentScreen(postId = pid, viewModel = viewModel(), onBack = { navController.popBackStack() })
         }
 
+        // --- Danh sách Chat ---
         composable(Screen.ChatList.route) {
-            ChatListScreen(viewModel = viewModel(), onBack = { navController.popBackStack() }, onOpenChat = { u, n ->
-                navController.navigate(Screen.Chat.createRoute(u, n))
-            })
+            ChatListScreen(
+                viewModel = viewModel(),
+                onBack = { navController.popBackStack() },
+                onOpenChat = { uid, name ->
+                    navController.navigate(Screen.Chat.createRoute(uid, name))
+                }
+            )
         }
 
-        composable(route = Screen.Chat.route, arguments = listOf(navArgument("uid") { type = NavType.StringType }, navArgument("name") { type = NavType.StringType })) { bse ->
+        // --- Màn hình Chat chi tiết ---
+        composable(
+            route = Screen.Chat.route,
+            arguments = listOf(
+                navArgument("uid") { type = NavType.StringType },
+                navArgument("name") { type = NavType.StringType }
+            )
+        ) { bse ->
             val uid = bse.arguments?.getString("uid") ?: ""
             val name = bse.arguments?.getString("name") ?: ""
             ChatScreen(otherUid = uid, otherName = name, viewModel = viewModel(), onBack = { navController.popBackStack() })
         }
 
-        composable(route = Screen.Profile.route, arguments = listOf(navArgument("uid") { type = NavType.StringType; nullable = true })) { bse ->
-            ProfileScreen(viewModel = viewModel(), uid = bse.arguments?.getString("uid"), onBack = { navController.popBackStack() })
+        // --- Màn hình Trang cá nhân (ĐÃ CẬP NHẬT ONLOGOUT) ---
+        composable(
+            route = Screen.Profile.route,
+            arguments = listOf(navArgument("uid") { type = NavType.StringType; nullable = true })
+        ) { bse ->
+            ProfileScreen(
+                viewModel = viewModel(),
+                uid = bse.arguments?.getString("uid"),
+                onBack = { navController.popBackStack() },
+                onNavigateToChat = { uid, name ->
+                    navController.navigate(Screen.Chat.createRoute(uid, name))
+                },
+                onLogout = {
+                    // Logic thực hiện đăng xuất
+                    authViewModel.logout()
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) // Xóa sạch lịch sử để không quay lại trang cá nhân được
+                    }
+                }
+            )
         }
 
-        composable(Screen.Explore.route) { ExploreScreen(onNavigateBack = { navController.popBackStack() }) }
+        // --- Màn hình Explore (Khám phá) ---
+        composable(Screen.Explore.route) {
+            ExploreScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToCategory = { tag ->
+                    navController.navigate(Screen.CategoryFeed.createRoute(tag))
+                }
+            )
+        }
 
-        composable(Screen.Settings.route) { SettingsScreen(onBack = { navController.popBackStack() }, onNavigateToAdmin = {}) }
+        // --- Màn hình Feed theo Chủ đề (Tag) ---
+        composable(
+            route = Screen.CategoryFeed.route,
+            arguments = listOf(navArgument("tag") { type = NavType.StringType })
+        ) { bse ->
+            val tag = bse.arguments?.getString("tag") ?: ""
+            CategoryFeedScreen(
+                tag = tag,
+                onBack = { navController.popBackStack() },
+                onNavigateToProfile = { uid -> navController.navigate(Screen.Profile.createRoute(uid)) },
+                onNavigateToComments = { pid -> navController.navigate(Screen.Comments.createRoute(pid)) }
+            )
+        }
 
-        composable(route = Screen.Search.route, arguments = listOf(navArgument("query") { type = NavType.StringType })) { bse ->
-            SearchScreen(query = bse.arguments?.getString("query") ?: "", onNavigateToProfile = { u -> navController.navigate(Screen.Profile.createRoute(u)) }, onNavigateBack = { navController.popBackStack() })
+        // --- Màn hình Cài đặt ---
+        composable(Screen.Settings.route) {
+            SettingsScreen(onBack = { navController.popBackStack() }, onNavigateToAdmin = {})
+        }
+
+        // --- Màn hình Tìm kiếm ---
+        composable(
+            route = Screen.Search.route,
+            arguments = listOf(navArgument("query") { type = NavType.StringType })
+        ) { bse ->
+            val query = bse.arguments?.getString("query") ?: ""
+            SearchScreen(
+                query = query,
+                onNavigateToProfile = { u -> navController.navigate(Screen.Profile.createRoute(u)) },
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
     }
 }

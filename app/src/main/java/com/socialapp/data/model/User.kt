@@ -7,6 +7,7 @@ data class User(
     val avatar: String = "",
     val bio: String = "",
     val note: String = "",
+    val fcm_token: String = "", // Thêm biến này
     val followers_count: Int = 0,
     val following_count: Int = 0,
     val is_premium: Boolean = false,

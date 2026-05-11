@@ -8,6 +8,9 @@ import androidx.lifecycle.viewModelScope
 import com.socialapp.data.repository.SocialRepository
 import kotlinx.coroutines.launch
 
+// ĐỊNH NGHĨA CATEGORY Ở ĐÂY ĐỂ CẢ 2 FILE CÙNG THẤY
+data class Category(val name: String, val postCount: Int)
+
 data class ExploreState(
     val categories: List<Category> = emptyList(),
     val isLoading: Boolean = false,
@@ -36,8 +39,8 @@ class ExploreViewModel : ViewModel() {
                     }
                     state = state.copy(isLoading = false, categories = categories)
                 }
-                .onFailure { 
-                    state = state.copy(isLoading = false, error = it.message) 
+                .onFailure {
+                    state = state.copy(isLoading = false, error = it.message)
                 }
         }
     }

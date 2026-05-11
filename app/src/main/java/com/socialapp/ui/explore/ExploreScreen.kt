@@ -15,11 +15,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-data class Category(val name: String, val postCount: Int)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExploreScreen(
+    onNavigateToCategory: (String) -> Unit,
     onNavigateBack: () -> Unit,
     viewModel: ExploreViewModel = viewModel()
 ) {
@@ -28,7 +27,7 @@ fun ExploreScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Explore") },
+                title = { Text("Khám phá", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -39,23 +38,20 @@ fun ExploreScreen(
     ) { padding ->
         when {
             state.isLoading -> {
-                Box(
-                    Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             }
-
-            state.categories.isEmpty() -> {
-                Box(
-                    Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("No categories found.")
+            state.error != null -> {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Text(state.error, color = MaterialTheme.colorScheme.error)
                 }
             }
-
+            state.categories.isEmpty() -> {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Text("Không tìm thấy chủ đề nào.")
+                }
+            }
             else -> {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
@@ -65,7 +61,10 @@ fun ExploreScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(state.categories) { category ->
-                        CategoryCard(category = category)
+                        CategoryCard(
+                            category = category,
+                            onClick = { onNavigateToCategory(category.name) }
+                        )
                     }
                 }
             }
@@ -74,12 +73,12 @@ fun ExploreScreen(
 }
 
 @Composable
-private fun CategoryCard(category: Category) {
+private fun CategoryCard(category: Category, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(100.dp)
-            .clickable { /* Navigate to category feed */ },
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
@@ -94,11 +93,12 @@ private fun CategoryCard(category: Category) {
             Text(
                 text = category.name,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "${category.postCount} posts",
+                text = "${category.postCount} bài viết",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
