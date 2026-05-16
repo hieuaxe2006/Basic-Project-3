@@ -17,7 +17,10 @@ class PostRepository {
         content: String,
         imageBase64: String?,
         tags: List<String> = emptyList(),
-        backgroundColor: String = ""
+        backgroundColor: String = "",
+        codeSnippet: String = "",
+        language: String = "",
+        taggedUserIds: List<String> = emptyList()
     ): Result<Unit> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
 
@@ -32,6 +35,9 @@ class PostRepository {
             user_id = uid,
             content = content,
             image_url = imageUrl,
+            code_snippet = codeSnippet,
+            language = language,
+            tagged_user_ids = taggedUserIds,
             created_at = Timestamp.now(),
             tags = tags,
             background_color = backgroundColor
