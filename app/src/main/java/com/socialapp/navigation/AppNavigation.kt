@@ -63,7 +63,9 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
                 onNavigateToExplore = { navController.navigate(Screen.Explore.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 onNavigateToSearch = { query -> navController.navigate(Screen.Search.createRoute(query)) },
-                onNavigateToAdmin = {}
+                onNavigateToAdmin = {},
+                onNavigateToCreateStory = { navController.navigate(Screen.CreateStory.route) },
+                onNavigateToViewStory = { storyId -> navController.navigate(Screen.ViewStory.createRoute(storyId)) }
             )
         }
 
@@ -83,6 +85,26 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
                 viewModel = viewModel(),
                 onBack = { navController.popBackStack() },
                 onPostCreated = { navController.popBackStack() }
+            )
+        }
+
+        // --- Màn hình Tạo tin (Story) ---
+        composable(Screen.CreateStory.route) {
+            CreateStoryScreen(
+                onBack = { navController.popBackStack() },
+                onStoryCreated = { navController.popBackStack() }
+            )
+        }
+
+        // --- Màn hình Xem tin (Story) ---
+        composable(
+            route = Screen.ViewStory.route,
+            arguments = listOf(navArgument("storyId") { type = NavType.StringType })
+        ) { bse ->
+            val storyId = bse.arguments?.getString("storyId") ?: return@composable
+            StoryViewScreen(
+                storyId = storyId,
+                onClose = { navController.popBackStack() }
             )
         }
 
@@ -119,7 +141,7 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
             ChatScreen(otherUid = uid, otherName = name, viewModel = viewModel(), onBack = { navController.popBackStack() })
         }
 
-        // --- Màn hình Trang cá nhân (ĐÃ CẬP NHẬT ONLOGOUT) ---
+        // --- Màn hình Trang cá nhân ---
         composable(
             route = Screen.Profile.route,
             arguments = listOf(navArgument("uid") { type = NavType.StringType; nullable = true })
@@ -132,11 +154,8 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
                     navController.navigate(Screen.Chat.createRoute(uid, name))
                 },
                 onLogout = {
-                    // Logic thực hiện đăng xuất
                     authViewModel.logout()
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(0) // Xóa sạch lịch sử để không quay lại trang cá nhân được
-                    }
+                    navController.navigate(Screen.Login.route) { popUpTo(0) }
                 }
             )
         }

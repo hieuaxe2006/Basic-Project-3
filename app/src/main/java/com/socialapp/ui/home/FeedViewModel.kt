@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.socialapp.data.model.Post
+import com.socialapp.data.model.Story
 import com.socialapp.data.model.User
 import com.socialapp.data.repository.ChatRepository
 import com.socialapp.data.repository.SocialRepository
@@ -15,6 +16,7 @@ import kotlinx.coroutines.launch
 
 data class FeedState(
     val posts: List<Post> = emptyList(),
+    val stories: List<Story> = emptyList(),
     val userMap: Map<String, User> = emptyMap(),
     val currentUser: User? = null,
     val recommendedUsers: List<User> = emptyList(),
@@ -29,7 +31,6 @@ data class FeedState(
     val shareSuccess: String? = null,
     val searchResults: List<User> = emptyList(),
     val isSearching: Boolean = false,
-    // THÊM: Số lượng tin nhắn chưa đọc toàn cục
     val unreadChatCount: Int = 0
 )
 
@@ -45,13 +46,13 @@ class FeedViewModel : ViewModel() {
 
     init {
         loadFeed()
+        loadStories()
         loadCurrentUser()
         observeSavedPosts()
         observeFollowing()
-        observeUnreadMessages() // Bắt đầu lắng nghe tin nhắn mới
+        observeUnreadMessages()
     }
 
-    // THÊM: Lắng nghe tin nhắn chưa đọc thời gian thực
     private fun observeUnreadMessages() {
         val uid = currentUid ?: return
         messageListener?.remove()
@@ -77,11 +78,30 @@ class FeedViewModel : ViewModel() {
             state = state.copy(isLoading = true, error = null)
             repo.getFeed().onSuccess { posts ->
                 val userIds = posts.map { it.user_id }.distinct()
-                val userMap = mutableMapOf<String, User>()
-                userIds.forEach { uid -> repo.getUser(uid)?.let { userMap[uid] = it } }
+                val userMap = state.userMap.toMutableMap()
+                userIds.forEach { uid -> 
+                    if (!userMap.containsKey(uid)) {
+                        repo.getUser(uid)?.let { userMap[uid] = it }
+                    }
+                }
                 val likedIds = repo.getLikedPostIds(posts.map { it.id })
                 state = state.copy(isLoading = false, posts = posts, userMap = userMap, likedIds = likedIds)
             }.onFailure { state = state.copy(isLoading = false, error = it.message) }
+        }
+    }
+
+    fun loadStories() {
+        viewModelScope.launch {
+            repo.getStories().onSuccess { stories ->
+                val userIds = stories.map { it.userId }.distinct()
+                val userMap = state.userMap.toMutableMap()
+                userIds.forEach { uid ->
+                    if (!userMap.containsKey(uid)) {
+                        repo.getUser(uid)?.let { userMap[uid] = it }
+                    }
+                }
+                state = state.copy(stories = stories, userMap = userMap)
+            }
         }
     }
 

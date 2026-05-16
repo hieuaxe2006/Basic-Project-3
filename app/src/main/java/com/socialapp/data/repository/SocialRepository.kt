@@ -8,16 +8,59 @@ import com.google.firebase.firestore.Query
 import com.socialapp.data.model.Comment
 import com.socialapp.data.model.FriendRequest
 import com.socialapp.data.model.Post
+import com.socialapp.data.model.Story
 import com.socialapp.data.model.User
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import java.util.Calendar
 
 class SocialRepository {
-    private val db = FirebaseFirestore.getInstance()
+    internal val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     val currentUid get() = auth.currentUser?.uid
+
+    // --- Story Logic ---
+    suspend fun saveStory(story: Story): Result<Unit> = runCatching {
+        val docRef = db.collection("stories").document()
+        docRef.set(story.copy(id = docRef.id)).await()
+    }
+
+    suspend fun createStory(imageUrl: String): Result<Unit> = runCatching {
+        val uid = currentUid ?: throw Exception("Not logged in")
+        val docRef = db.collection("stories").document()
+        
+        val calendar = Calendar.getInstance()
+        val createdAt = Timestamp.now()
+        calendar.time = createdAt.toDate()
+        calendar.add(Calendar.DAY_OF_YEAR, 1) // Story expires in 24 hours
+        val expiresAt = Timestamp(calendar.time)
+
+        val story = Story(
+            id = docRef.id,
+            userId = uid,
+            imageUrl = imageUrl,
+            createdAt = createdAt,
+            expiresAt = expiresAt,
+            type = "image"
+        )
+        docRef.set(story).await()
+    }
+
+    suspend fun getStories(): Result<List<Story>> = runCatching {
+        val now = Timestamp.now()
+        db.collection("stories")
+            .whereGreaterThan("expiresAt", now)
+            .get()
+            .await()
+            .toObjects(Story::class.java)
+            .sortedByDescending { it.createdAt }
+    }
+
+    suspend fun getStory(storyId: String): Story? {
+        return db.collection("stories").document(storyId).get().await().toObject(Story::class.java)
+    }
 
     // --- Friend Request & Follow Logic ---
     suspend fun sendFriendRequest(targetUid: String): Result<Unit> = runCatching {

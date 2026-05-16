@@ -3,10 +3,13 @@ package com.socialapp.ui.home
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -29,11 +33,14 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.socialapp.data.model.Post
+import com.socialapp.data.model.Story
 import com.socialapp.data.model.User
 import com.socialapp.ui.chat.UserAvatar
 import kotlinx.coroutines.delay
@@ -51,6 +58,8 @@ fun HomeScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToSearch: (String) -> Unit,
     onNavigateToAdmin: () -> Unit,
+    onNavigateToCreateStory: () -> Unit,
+    onNavigateToViewStory: (String) -> Unit,
     feedViewModel: FeedViewModel = viewModel()
 ) {
     val state = feedViewModel.state
@@ -94,7 +103,6 @@ fun HomeScreen(
                                     Icon(imageVector = Icons.Outlined.Search, contentDescription = null, modifier = Modifier.size(20.dp))
                                 }
                                 Spacer(Modifier.width(12.dp))
-                                // Đã gỡ bỏ nút Chat ở phía trên
                             }
                         )
                         OutlinedTextField(
@@ -133,8 +141,6 @@ fun HomeScreen(
                         selected = false,
                         onClick = onNavigateToCreatePost
                     )
-
-                    // NÚT CHAT ĐÃ ĐƯỢC CHUYỂN XUỐNG ĐÂY KÈM THEO BADGE (SỐ TIN NHẮN)
                     NavigationBarItem(
                         icon = {
                             BadgedBox(
@@ -153,7 +159,6 @@ fun HomeScreen(
                         selected = false,
                         onClick = onNavigateToChat
                     )
-
                     NavigationBarItem(
                         icon = { Icon(imageVector = Icons.Default.Person, contentDescription = null) },
                         label = { Text("Profile") },
@@ -164,13 +169,13 @@ fun HomeScreen(
             }
         }
     ) { padding ->
-        // Phần thân Box giữ nguyên không đổi
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (state.isLoading && state.posts.isEmpty()) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     item { QuickCreatePostBar(onNavigateToProfile, onNavigateToCreatePost, state.currentUser) }
+                    item { StorySection(state.stories, state.currentUser, state.userMap, onCreateStory = onNavigateToCreateStory, onStoryClick = onNavigateToViewStory) }
                     items(state.posts, key = { it.id }) { post ->
                         PostItem(
                             post = post,
@@ -202,6 +207,136 @@ fun HomeScreen(
                     Text(msg, color = Color.White, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun StorySection(stories: List<Story>, currentUser: User?, userMap: Map<String, User>, onCreateStory: () -> Unit, onStoryClick: (String) -> Unit) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item { CreateStoryItem(currentUser, onCreateStory) }
+        items(stories) { story ->
+            StoryItem(story, userMap[story.userId], onStoryClick)
+        }
+    }
+}
+
+@Composable
+fun CreateStoryItem(user: User?, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.size(width = 110.dp, height = 190.dp).clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (user?.avatar?.isNotBlank() == true) {
+                AsyncImage(
+                    model = user.avatar,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxWidth().height(130.dp),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(modifier = Modifier.fillMaxWidth().height(130.dp).background(Color.LightGray), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(40.dp), tint = Color.Gray)
+                }
+            }
+            
+            Box(
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(60.dp).background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "Tạo tin",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 16.dp)
+                )
+            }
+
+            Surface(
+                modifier = Modifier.align(Alignment.Center).offset(y = 35.dp).size(32.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary,
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.surface)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.padding(4.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun StoryItem(story: Story, user: User?, onClick: (String) -> Unit) {
+    Card(
+        modifier = Modifier.size(width = 110.dp, height = 190.dp).clickable { onClick(story.id) },
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (story.type == "text") {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(Color(android.graphics.Color.parseColor(story.backgroundColor))),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = story.text,
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(8.dp),
+                        maxLines = 5,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            } else {
+                AsyncImage(
+                    model = story.imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            
+            // Gradient overlay for better text readability
+            Box(
+                modifier = Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.4f)),
+                        startY = 300f
+                    )
+                )
+            )
+
+            // User Avatar at top left
+            Surface(
+                modifier = Modifier.padding(8.dp).size(36.dp),
+                shape = CircleShape,
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+            ) {
+                if (user?.avatar?.isNotBlank() == true) {
+                    AsyncImage(model = user.avatar, contentDescription = null, contentScale = ContentScale.Crop)
+                } else {
+                    Box(modifier = Modifier.fillMaxSize().background(Color.Gray), contentAlignment = Alignment.Center) {
+                        Text(user?.username?.take(1)?.uppercase() ?: "?", color = Color.White, fontSize = 12.sp)
+                    }
+                }
+            }
+
+            // Username at bottom
+            Text(
+                text = user?.username ?: "Unknown",
+                color = Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.align(Alignment.BottomStart).padding(8.dp)
+            )
         }
     }
 }
