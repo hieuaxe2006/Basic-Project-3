@@ -31,7 +31,8 @@ data class FeedState(
     val shareSuccess: String? = null,
     val searchResults: List<User> = emptyList(),
     val isSearching: Boolean = false,
-    val unreadChatCount: Int = 0
+    val unreadChatCount: Int = 0,
+    val unreadNotificationCount: Int = 0
 )
 
 class FeedViewModel : ViewModel() {
@@ -39,6 +40,7 @@ class FeedViewModel : ViewModel() {
     private val chatRepo = ChatRepository()
     private val db = FirebaseFirestore.getInstance()
     private var messageListener: ListenerRegistration? = null
+    private var notificationListener: ListenerRegistration? = null
 
     var state by mutableStateOf(FeedState())
         private set
@@ -51,6 +53,7 @@ class FeedViewModel : ViewModel() {
         observeSavedPosts()
         observeFollowing()
         observeUnreadMessages()
+        observeUnreadNotifications()
     }
 
     private fun observeUnreadMessages() {
@@ -62,6 +65,18 @@ class FeedViewModel : ViewModel() {
             .addSnapshotListener { snapshot, _ ->
                 val count = snapshot?.size() ?: 0
                 state = state.copy(unreadChatCount = count)
+            }
+    }
+
+    private fun observeUnreadNotifications() {
+        val uid = currentUid ?: return
+        notificationListener?.remove()
+        notificationListener = db.collection("notifications")
+            .whereEqualTo("receiverId", uid)
+            .whereEqualTo("isSeen", false)
+            .addSnapshotListener { snapshot, _ ->
+                val count = snapshot?.size() ?: 0
+                state = state.copy(unreadNotificationCount = count)
             }
     }
 
@@ -162,6 +177,7 @@ class FeedViewModel : ViewModel() {
 
     override fun onCleared() {
         messageListener?.remove()
+        notificationListener?.remove()
         super.onCleared()
     }
 }

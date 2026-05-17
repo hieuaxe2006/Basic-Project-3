@@ -28,4 +28,5 @@ sealed class Screen(val route: String) {
         fun createRoute(query: String) = "search/$query"
     }
     object Admin : Screen("admin")
+    object Notifications : Screen("notifications")
 }
