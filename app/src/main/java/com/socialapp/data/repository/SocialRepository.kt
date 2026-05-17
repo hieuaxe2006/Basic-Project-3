@@ -1,5 +1,6 @@
 package com.socialapp.data.repository
 
+import android.util.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
@@ -7,6 +8,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.socialapp.data.model.Comment
 import com.socialapp.data.model.FriendRequest
+import com.socialapp.data.model.Notification
 import com.socialapp.data.model.Post
 import com.socialapp.data.model.Story
 import com.socialapp.data.model.User
@@ -65,11 +67,23 @@ class SocialRepository {
     // --- Friend Request & Follow Logic ---
     suspend fun sendFriendRequest(targetUid: String): Result<Unit> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
+        val currentUser = getUser(uid) ?: throw Exception("User not found")
         val existing = db.collection("friend_requests").whereEqualTo("sender_id", uid).whereEqualTo("receiver_id", targetUid).get().await()
         if (!existing.isEmpty) throw Exception("Request already sent")
         val docRef = db.collection("friend_requests").document()
         val request = FriendRequest(id = docRef.id, sender_id = uid, receiver_id = targetUid, status = "pending", created_at = Timestamp.now())
         docRef.set(request).await()
+        
+        createNotification(
+            Notification(
+                receiverId = targetUid,
+                senderId = uid,
+                senderName = currentUser.username,
+                senderAvatar = currentUser.avatar,
+                type = "friend_request",
+                content = "${currentUser.username} đã gửi lời mời kết bạn."
+            )
+        )
     }
 
     suspend fun acceptFriendRequest(requestId: String): Result<Unit> = runCatching {
@@ -78,6 +92,20 @@ class SocialRepository {
         db.collection("friend_requests").document(requestId).update("status", "accepted").await()
         val friendDocId = if (request.sender_id < request.receiver_id) "${request.sender_id}_${request.receiver_id}" else "${request.receiver_id}_${request.sender_id}"
         db.collection("friends").document(friendDocId).set(mapOf("user1" to request.sender_id, "user2" to request.receiver_id, "since" to Timestamp.now(), "users" to listOf(request.sender_id, request.receiver_id))).await()
+        
+        val currentUser = getUser(request.receiver_id)
+        if (currentUser != null) {
+            createNotification(
+                Notification(
+                    receiverId = request.sender_id,
+                    senderId = request.receiver_id,
+                    senderName = currentUser.username,
+                    senderAvatar = currentUser.avatar,
+                    type = "friend_accept",
+                    content = "${currentUser.username} đã chấp nhận lời mời kết bạn."
+                )
+            )
+        }
     }
 
     suspend fun getFriendStatus(targetUid: String): String {
@@ -108,12 +136,24 @@ class SocialRepository {
     // --- Follow, Like, Save Flow ---
     suspend fun toggleFollow(targetUid: String): Result<Boolean> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
+        val currentUser = getUser(uid) ?: throw Exception("User not found")
         val query = db.collection("follows").whereEqualTo("follower_id", uid).whereEqualTo("following_id", targetUid).get().await()
         if (query.isEmpty) {
             val docRef = db.collection("follows").document()
             docRef.set(mapOf("id" to docRef.id, "follower_id" to uid, "following_id" to targetUid)).await()
             db.collection("users").document(uid).update("following_count", FieldValue.increment(1)).await()
             db.collection("users").document(targetUid).update("followers_count", FieldValue.increment(1)).await()
+            
+            createNotification(
+                Notification(
+                    receiverId = targetUid,
+                    senderId = uid,
+                    senderName = currentUser.username,
+                    senderAvatar = currentUser.avatar,
+                    type = "follow",
+                    content = "${currentUser.username} đã bắt đầu theo dõi bạn."
+                )
+            )
             true
         } else {
             query.documents.first().reference.delete().await()
@@ -138,11 +178,27 @@ class SocialRepository {
 
     suspend fun toggleLike(postId: String): Result<Boolean> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
+        val currentUser = getUser(uid) ?: throw Exception("User not found")
+        val post = getPost(postId).getOrThrow()
         val query = db.collection("likes").whereEqualTo("user_id", uid).whereEqualTo("post_id", postId).get().await()
         if (query.isEmpty) {
             val docRef = db.collection("likes").document()
             docRef.set(mapOf("id" to docRef.id, "user_id" to uid, "post_id" to postId)).await()
             db.collection("posts").document(postId).update("like_count", FieldValue.increment(1)).await()
+            
+            if (post.user_id != uid) {
+                createNotification(
+                    Notification(
+                        receiverId = post.user_id,
+                        senderId = uid,
+                        senderName = currentUser.username,
+                        senderAvatar = currentUser.avatar,
+                        type = "like",
+                        postId = postId,
+                        content = "${currentUser.username} đã thích bài viết của bạn."
+                    )
+                )
+            }
             true
         } else {
             query.documents.first().reference.delete().await()
@@ -195,10 +251,26 @@ class SocialRepository {
     // --- Comment Logic ---
     suspend fun addComment(postId: String, content: String, parentId: String = ""): Result<Comment> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
+        val currentUser = getUser(uid) ?: throw Exception("User not found")
+        val post = getPost(postId).getOrThrow()
         val docRef = db.collection("comments").document()
         val comment = Comment(id = docRef.id, post_id = postId, user_id = uid, content = content, created_at = Timestamp.now(), parent_id = parentId)
         docRef.set(comment).await()
         if (parentId.isBlank()) db.collection("posts").document(postId).update("comment_count", FieldValue.increment(1)).await()
+        
+        if (post.user_id != uid) {
+            createNotification(
+                Notification(
+                    receiverId = post.user_id,
+                    senderId = uid,
+                    senderName = currentUser.username,
+                    senderAvatar = currentUser.avatar,
+                    type = "comment",
+                    postId = postId,
+                    content = "${currentUser.username} đã bình luận về bài viết của bạn: $content"
+                )
+            )
+        }
         comment
     }
 
@@ -230,6 +302,47 @@ class SocialRepository {
             }
         }
         return result
+    }
+
+    // --- Notification Logic ---
+    suspend fun createNotification(notification: Notification): Result<Unit> = runCatching {
+        val docRef = db.collection("notifications").document()
+        docRef.set(notification.copy(id = docRef.id, createdAt = Timestamp.now())).await()
+    }
+
+    fun getNotificationsFlow(): Flow<List<Notification>> = callbackFlow {
+        val uid = currentUid ?: run { trySend(emptyList()); close(); return@callbackFlow }
+        val listener = db.collection("notifications")
+            .whereEqualTo("receiverId", uid)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .limit(50)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("SocialRepository", "Notification listener error", error)
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val notifications = snapshot.toObjects(Notification::class.java)
+                    trySend(notifications)
+                }
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun markNotificationAsSeen(notificationId: String): Result<Unit> = runCatching {
+        db.collection("notifications").document(notificationId).update("isSeen", true).await()
+    }
+
+    suspend fun markAllNotificationsAsSeen(): Result<Unit> = runCatching {
+        val uid = currentUid ?: return@runCatching
+        val batch = db.batch()
+        val unreadDocs = db.collection("notifications")
+            .whereEqualTo("receiverId", uid)
+            .whereEqualTo("isSeen", false)
+            .get()
+            .await()
+        unreadDocs.forEach { batch.update(it.reference, "isSeen", true) }
+        batch.commit().await()
     }
 
     // --- Feed & Explore ---

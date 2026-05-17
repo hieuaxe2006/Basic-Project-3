@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
@@ -60,6 +61,7 @@ fun HomeScreen(
     onNavigateToAdmin: () -> Unit,
     onNavigateToCreateStory: () -> Unit,
     onNavigateToViewStory: (String) -> Unit,
+    onNavigateToNotifications: () -> Unit,
     feedViewModel: FeedViewModel = viewModel()
 ) {
     val state = feedViewModel.state
@@ -96,11 +98,26 @@ fun HomeScreen(
                                 Text("SocialApp", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 26.sp)
                             },
                             actions = {
+                                BadgedBox(
+                                    badge = {
+                                        if (state.unreadNotificationCount > 0) {
+                                            Badge { Text(state.unreadNotificationCount.toString()) }
+                                        }
+                                    }
+                                ) {
+                                    IconButton(
+                                        onClick = onNavigateToNotifications,
+                                        modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                                    ) {
+                                        Icon(imageVector = Icons.Outlined.Notifications, contentDescription = "Notifications", modifier = Modifier.size(20.dp))
+                                    }
+                                }
+                                Spacer(Modifier.width(15.dp)) // Chỉnh khoảng cách thành 15dp
                                 IconButton(
                                     onClick = { onNavigateToSearch("") },
                                     modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                                 ) {
-                                    Icon(imageVector = Icons.Outlined.Search, contentDescription = null, modifier = Modifier.size(20.dp))
+                                    Icon(imageVector = Icons.Outlined.Search, contentDescription = "Search", modifier = Modifier.size(20.dp))
                                 }
                                 Spacer(Modifier.width(12.dp))
                             }

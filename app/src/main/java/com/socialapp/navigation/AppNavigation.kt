@@ -18,6 +18,7 @@ import com.socialapp.ui.search.SearchScreen
 import com.socialapp.ui.settings.SettingsScreen
 import com.socialapp.ui.admin.AdminDashboardScreen
 import com.socialapp.ui.admin.AdminViewModel
+import com.socialapp.ui.notification.NotificationScreen
 
 @Composable
 fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
@@ -65,7 +66,17 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
                 onNavigateToSearch = { query -> navController.navigate(Screen.Search.createRoute(query)) },
                 onNavigateToAdmin = {},
                 onNavigateToCreateStory = { navController.navigate(Screen.CreateStory.route) },
-                onNavigateToViewStory = { storyId -> navController.navigate(Screen.ViewStory.createRoute(storyId)) }
+                onNavigateToViewStory = { storyId -> navController.navigate(Screen.ViewStory.createRoute(storyId)) },
+                onNavigateToNotifications = { navController.navigate(Screen.Notifications.route) }
+            )
+        }
+
+        // --- Màn hình Thông báo ---
+        composable(Screen.Notifications.route) {
+            NotificationScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToPost = { postId -> navController.navigate(Screen.Comments.createRoute(postId)) },
+                onNavigateToProfile = { uid -> navController.navigate(Screen.Profile.createRoute(uid)) }
             )
         }
 
