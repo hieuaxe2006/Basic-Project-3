@@ -21,10 +21,13 @@ data class CreatePostState(
     val selectedTags: List<String> = emptyList(),
     val backgroundColor: String = "",
     val codeSnippet: String = "",
-    val language: String = "Kotlin",
+    val language: String = "Push",
     val friends: List<User> = emptyList(),
     val selectedTaggedUsers: List<User> = emptyList(),
-    val isLoadingFriends: Boolean = false
+    val isLoadingFriends: Boolean = false,
+    val aiSuggestion: String? = null,
+    val isAnalyzingAi: Boolean = false,
+    val isAutoTagging: Boolean = false
 )
 
 class CreatePostViewModel : ViewModel() {
@@ -93,6 +96,40 @@ class CreatePostViewModel : ViewModel() {
                 state = state.copy(isLoading = false, isSuccess = true)
             }.onFailure {
                 state = state.copy(isLoading = false, error = it.message)
+            }
+        }
+    }
+
+    fun getAiSuggestion(content: String) {
+        if (content.isBlank()) return
+        viewModelScope.launch {
+            state = state.copy(isAnalyzingAi = true)
+            val prompt = "Hãy đóng vai một chuyên gia thể hình và phân tích bài đăng sau của người dùng. Nếu họ đặt câu hỏi về tập luyện, dinh dưỡng, chấn thương hoặc nhờ hướng dẫn, hãy trả lời ngắn gọn trong 1-2 câu. Nếu chỉ là bài chia sẻ bình thường, hãy đưa ra một lời khuyên hoặc lời động viên ngắn phù hợp. Bài đăng: \"$content\""
+            com.socialapp.data.remote.GeminiApi.generateContent(prompt).onSuccess { text ->
+                state = state.copy(aiSuggestion = text, isAnalyzingAi = false)
+            }.onFailure {
+                state = state.copy(isAnalyzingAi = false)
+            }
+        }
+    }
+
+    fun autoTagContent(content: String) {
+        if (content.isBlank()) return
+        viewModelScope.launch {
+            state = state.copy(isAutoTagging = true)
+            val prompt = "Dựa trên bài đăng sau đây, hãy chọn ra một tag duy nhất phù hợp nhất trong danh sách sau: Workout, Nutrition, Supplements, Transformation, Motivation, Q&A. Chỉ trả về đúng tên của tag đó, không trả về thêm ký tự nào khác. Bài đăng: \"$content\""
+            com.socialapp.data.remote.GeminiApi.generateContent(prompt).onSuccess { tagResult ->
+                val cleanTag = tagResult.trim().removeSurrounding("\"").removeSurrounding("'")
+                val validTags = listOf("Workout", "Nutrition", "Supplements", "Transformation", "Motivation", "Q&A")
+                val matchedTag = validTags.firstOrNull { it.equals(cleanTag, ignoreCase = true) }
+                if (matchedTag != null) {
+                    val current = state.selectedTags.toMutableList()
+                    if (matchedTag !in current) current.add(matchedTag)
+                    state = state.copy(selectedTags = current)
+                }
+                state = state.copy(isAutoTagging = false)
+            }.onFailure {
+                state = state.copy(isAutoTagging = false)
             }
         }
     }

@@ -95,7 +95,7 @@ fun HomeScreen(
                     Column {
                         TopAppBar(
                             title = {
-                                Text("SocialApp", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 26.sp)
+                                Text("GymHub", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 26.sp)
                             },
                             actions = {
                                 BadgedBox(
@@ -125,7 +125,7 @@ fun HomeScreen(
                         OutlinedTextField(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
-                            placeholder = { Text("Tìm kiếm...") },
+                            placeholder = { Text("Tìm gymer, bài tập...") },
                             leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).height(48.dp),
                             shape = RoundedCornerShape(24.dp),
@@ -371,7 +371,7 @@ fun QuickCreatePostBar(onProfile: (String?) -> Unit, onCreate: () -> Unit, user:
             }
             Surface(onClick = onCreate, modifier = Modifier.weight(1f).padding(horizontal = 12.dp).height(36.dp), shape = RoundedCornerShape(20.dp), color = Color.Transparent, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                 Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.padding(horizontal = 16.dp)) {
-                    Text("Bạn đang nghĩ gì?", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+                    Text("Hôm nay tập gì?", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                 }
             }
             IconButton(onClick = onCreate) {

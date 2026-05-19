@@ -139,6 +139,11 @@ class SocialRepository {
         val currentUser = getUser(uid) ?: throw Exception("User not found")
         val query = db.collection("follows").whereEqualTo("follower_id", uid).whereEqualTo("following_id", targetUid).get().await()
         if (query.isEmpty) {
+            val targetUser = getUser(targetUid) ?: throw Exception("User not found")
+            if (!targetUser.is_premium && targetUser.followers_count >= 10) {
+                throw Exception("Gym gymer này đã đạt giới hạn 10 người theo dõi. Họ cần nâng cấp Premium!")
+            }
+
             val docRef = db.collection("follows").document()
             docRef.set(mapOf("id" to docRef.id, "follower_id" to uid, "following_id" to targetUid)).await()
             db.collection("users").document(uid).update("following_count", FieldValue.increment(1)).await()

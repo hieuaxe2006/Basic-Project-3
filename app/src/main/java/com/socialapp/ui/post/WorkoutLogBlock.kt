@@ -9,11 +9,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -23,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun CodeBlock(code: String, language: String) {
+fun WorkoutLogBlock(log: String, workoutType: String) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
 
@@ -31,29 +33,41 @@ fun CodeBlock(code: String, language: String) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF23241F)) // Màu nền Monokai dark
-            .border(0.5.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF1E1E1E))
+            .border(1.dp, Color(0xFFFF5722).copy(alpha = 0.2f), RoundedCornerShape(12.dp))
     ) {
-        // Header bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF191A16))
-                .padding(horizontal = 12.dp, vertical = 4.dp),
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(Color(0xFF2C2C2C), Color(0xFF1E1E1E))
+                    )
+                )
+                .padding(horizontal = 12.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = language.uppercase(),
-                color = Color(0xFFAE81FF),
-                style = MaterialTheme.typography.labelSmall,
-                fontFamily = FontFamily.Monospace
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.FitnessCenter,
+                    contentDescription = null,
+                    tint = Color(0xFFFF5722),
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Nhật ký tập: ${workoutType.uppercase()}",
+                    color = Color(0xFFFF5722),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontFamily = FontFamily.Default
+                )
+            }
             IconButton(
                 onClick = {
-                    clipboardManager.setText(AnnotatedString(code))
-                    Toast.makeText(context, "Đã chép vào bộ nhớ tạm", Toast.LENGTH_SHORT).show()
+                    clipboardManager.setText(AnnotatedString(log))
+                    Toast.makeText(context, "Đã chép nhật ký tập vào bộ nhớ tạm", Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier.size(28.dp)
             ) {
@@ -61,7 +75,6 @@ fun CodeBlock(code: String, language: String) {
             }
         }
 
-        // Code Content
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -69,7 +82,7 @@ fun CodeBlock(code: String, language: String) {
                 .padding(12.dp)
         ) {
             Text(
-                text = SyntaxHighlighter.highlight(code),
+                text = WorkoutLogParser.parse(log),
                 fontFamily = FontFamily.Monospace,
                 fontSize = 13.sp,
                 color = Color.White,

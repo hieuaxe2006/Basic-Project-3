@@ -22,7 +22,7 @@ import coil.compose.AsyncImage
 import com.socialapp.data.model.Post
 import com.socialapp.data.model.User
 import com.google.firebase.Timestamp
-import com.socialapp.ui.post.CodeBlock // Đảm bảo đúng package
+import com.socialapp.ui.post.WorkoutLogBlock // Đảm bảo đúng package
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
@@ -68,9 +68,9 @@ fun PostItem(
                 Text(post.content)
             }
 
-            // HIỂN THỊ CODE
+            // HIỂN THỊ WORKOUT LOG
             if (post.code_snippet.isNotBlank()) {
-                CodeBlock(code = post.code_snippet, language = post.language)
+                WorkoutLogBlock(log = post.code_snippet, workoutType = post.language)
             }
 
             if (post.image_url.isNotBlank()) {

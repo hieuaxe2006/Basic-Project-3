@@ -36,6 +36,26 @@ class UserRepository {
         db.collection("users").document(uid).update("avatar", avatarUrl).await()
     }
 
+    suspend fun updateGymMetrics(
+        uid: String,
+        height: Double,
+        weight: Double,
+        bodyFat: Double,
+        benchPr: Double,
+        squatPr: Double,
+        deadliftPr: Double
+    ): Result<Unit> = runCatching {
+        val updates = mapOf<String, Any>(
+            "height" to height,
+            "weight" to weight,
+            "body_fat" to bodyFat,
+            "bench_pr" to benchPr,
+            "squat_pr" to squatPr,
+            "deadlift_pr" to deadliftPr
+        )
+        db.collection("users").document(uid).update(updates).await()
+    }
+
     suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit> = runCatching {
         val user = auth.currentUser ?: throw Exception("Not logged in")
         val email = user.email ?: throw Exception("No email found")

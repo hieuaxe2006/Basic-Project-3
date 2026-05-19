@@ -7,6 +7,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -15,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.*
@@ -53,6 +57,7 @@ fun ProfileScreen(
     var showPasswordSheet by remember { mutableStateOf(false) }
     var showShareSheet by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) } // State cho hộp thoại đăng xuất
+    var showMetricsDialog by remember { mutableStateOf(false) }
     var postToShare by remember { mutableStateOf<Post?>(null) }
 
     LaunchedEffect(state.shareSuccess) {
@@ -142,6 +147,7 @@ fun ProfileScreen(
                             showShareSheet = true
                             viewModel.loadFriends()
                         },
+                        onUpdateMetrics = { showMetricsDialog = true },
                         viewModel = viewModel,
                         modifier = Modifier.padding(padding)
                     )
@@ -229,6 +235,138 @@ fun ProfileScreen(
             )
         }
     }
+
+    if (showMetricsDialog && state.user != null) {
+        var heightText by remember { mutableStateOf(if(state.user.height > 0) state.user.height.toString() else "") }
+        var weightText by remember { mutableStateOf(if(state.user.weight > 0) state.user.weight.toString() else "") }
+        var bodyFatText by remember { mutableStateOf(if(state.user.body_fat > 0) state.user.body_fat.toString() else "") }
+        var benchText by remember { mutableStateOf(if(state.user.bench_pr > 0) state.user.bench_pr.toString() else "") }
+        var squatText by remember { mutableStateOf(if(state.user.squat_pr > 0) state.user.squat_pr.toString() else "") }
+        var deadliftText by remember { mutableStateOf(if(state.user.deadlift_pr > 0) state.user.deadlift_pr.toString() else "") }
+
+        AlertDialog(
+            onDismissRequest = { showMetricsDialog = false },
+            title = { Text("Cập nhật chỉ số Gymer") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("Thông số cơ thể:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = heightText,
+                            onValueChange = { heightText = it },
+                            label = { Text("Cao (cm)") },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                        )
+                        OutlinedTextField(
+                            value = weightText,
+                            onValueChange = { weightText = it },
+                            label = { Text("Nặng (kg)") },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                        )
+                    }
+                    OutlinedTextField(
+                        value = bodyFatText,
+                        onValueChange = { bodyFatText = it },
+                        label = { Text("Tỉ lệ mỡ (%)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text("Kỷ lục cá nhân (PR):", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = benchText,
+                            onValueChange = { benchText = it },
+                            label = { Text("Bench (kg)") },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                        )
+                        OutlinedTextField(
+                            value = squatText,
+                            onValueChange = { squatText = it },
+                            label = { Text("Squat (kg)") },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                        )
+                    }
+                    OutlinedTextField(
+                        value = deadliftText,
+                        onValueChange = { deadliftText = it },
+                        label = { Text("Deadlift (kg)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val h = heightText.toDoubleOrNull() ?: 0.0
+                        val w = weightText.toDoubleOrNull() ?: 0.0
+                        val bf = bodyFatText.toDoubleOrNull() ?: 0.0
+                        val bp = benchText.toDoubleOrNull() ?: 0.0
+                        val sq = squatText.toDoubleOrNull() ?: 0.0
+                        val dl = deadliftText.toDoubleOrNull() ?: 0.0
+                        viewModel.updateGymMetrics(h, w, bf, bp, sq, dl)
+                        showMetricsDialog = false
+                    }
+                ) {
+                    Text("Lưu")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMetricsDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
+    if (state.generatedWorkout != null) {
+        val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+        val context = androidx.compose.ui.platform.LocalContext.current
+        AlertDialog(
+            onDismissRequest = { viewModel.clearGeneratedWorkout() },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.AutoAwesome, null, tint = Color(0xFF00E676))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Lịch tập đề xuất từ AI")
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = state.generatedWorkout ?: "",
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(state.generatedWorkout ?: ""))
+                        Toast.makeText(context, "Đã sao chép lịch tập!", Toast.LENGTH_SHORT).show()
+                    }
+                ) {
+                    Text("Sao chép")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.clearGeneratedWorkout() }) {
+                    Text("Đóng")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -239,6 +377,7 @@ private fun ProfileContent(
     onFollowingClick: () -> Unit,
     onMessageClick: () -> Unit,
     onShareClick: (Post) -> Unit,
+    onUpdateMetrics: () -> Unit,
     viewModel: ProfileViewModel,
     modifier: Modifier = Modifier
 ) {
@@ -327,7 +466,83 @@ private fun ProfileContent(
                         StatItem("${user.following_count}", "Đang theo dõi", onFollowingClick)
                     }
 
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(8.dp))
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Chỉ số Gymer & Kỷ lục (PR)",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                if (isOwnProfile) {
+                                    Text(
+                                        text = "Cập nhật",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.clickable { onUpdateMetrics() }
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                GymMetricItem(value = if (user.height > 0) "${user.height.toInt()} cm" else "--", label = "Chiều cao")
+                                GymMetricItem(value = if (user.weight > 0) "${user.weight} kg" else "--", label = "Cân nặng")
+                                GymMetricItem(value = if (user.body_fat > 0) "${user.body_fat}%" else "--", label = "Tỷ lệ mỡ")
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                            Spacer(Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                GymMetricItem(value = if (user.bench_pr > 0) "${user.bench_pr} kg" else "--", label = "Bench Press")
+                                GymMetricItem(value = if (user.squat_pr > 0) "${user.squat_pr} kg" else "--", label = "Squat")
+                                GymMetricItem(value = if (user.deadlift_pr > 0) "${user.deadlift_pr} kg" else "--", label = "Deadlift")
+                            }
+
+                            if (isOwnProfile) {
+                                Spacer(Modifier.height(16.dp))
+                                val state = viewModel.state
+                                Button(
+                                    onClick = { viewModel.generateWorkoutPlan() },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    enabled = !state.isGeneratingWorkout
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        if (state.isGeneratingWorkout) {
+                                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("AI đang phân tích...", color = Color.White)
+                                        } else {
+                                            Icon(Icons.Default.AutoAwesome, null, tint = Color.Black)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("Tạo Lịch Tập AI cá nhân hóa", color = Color.Black, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
 
                     if (isOwnProfile) {
                         Button(
@@ -583,5 +798,17 @@ private fun ChangePasswordContent(isLoading: Boolean, success: Boolean, error: S
                 if (isLoading) CircularProgressIndicator(Modifier.size(20.dp)) else Text("Cập nhật")
             }
         }
+    }
+}
+
+@Composable
+private fun RowScope.GymMetricItem(value: String, label: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.weight(1f)
+    ) {
+        Text(text = value, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
+        Spacer(Modifier.height(2.dp))
+        Text(text = label, fontSize = 11.sp, color = Color.Gray)
     }
 }

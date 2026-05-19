@@ -24,6 +24,18 @@ class PostRepository {
     ): Result<Unit> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
 
+        val userDoc = db.collection("users").document(uid).get().await()
+        val isPremium = userDoc.getBoolean("is_premium") ?: false
+        if (!isPremium) {
+            val postsQuery = db.collection("posts")
+                .whereEqualTo("user_id", uid)
+                .get()
+                .await()
+            if (postsQuery.size() >= 5) {
+                throw Exception("Tài khoản Free chỉ được đăng tối đa 5 bài. Nâng cấp Premium để đăng không giới hạn!")
+            }
+        }
+
         var imageUrl = ""
         if (!imageBase64.isNullOrBlank()) {
             imageUrl = ImgBBApi.uploadImage(imageBase64).getOrThrow()

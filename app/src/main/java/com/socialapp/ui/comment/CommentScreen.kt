@@ -262,12 +262,20 @@ private fun CommentItem(
         Spacer(Modifier.width(8.dp))
         
         Column {
+            val isPremium = user?.is_premium == true
             Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                shape = RoundedCornerShape(16.dp)
+                color = if (isPremium) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f) 
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(16.dp),
+                border = if (isPremium) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF5722)) else null
             ) {
                 Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                    Text(user?.username ?: "Người dùng", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(
+                        text = if (isPremium) "${user?.username ?: "Người dùng"} 👑" else (user?.username ?: "Người dùng"),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = if (isPremium) Color(0xFFFF5722) else MaterialTheme.colorScheme.onSurface
+                    )
                     Text(comment.content, style = MaterialTheme.typography.bodyMedium, fontSize = 14.sp)
                 }
             }

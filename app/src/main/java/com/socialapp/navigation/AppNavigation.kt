@@ -1,6 +1,17 @@
 package com.socialapp.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -25,15 +36,46 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
     val navController = rememberNavController()
     val authState = authViewModel.state
 
-    // Xác định màn hình bắt đầu dựa trên trạng thái đăng nhập và vai trò
-    val startDest = when {
-        !authState.isLoggedIn -> Screen.Login.route
-        authState.userRole == "admin" -> Screen.Admin.route
-        else -> Screen.Home.route
+    // Hiển thị loading khi đang xác thực phiên đăng nhập (cold start)
+    if (authState.isSessionLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Đang tải dữ liệu...", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        return
     }
 
-    // Chờ lấy thông tin người dùng từ Firebase trước khi hiển thị nội dung
-    if (authState.isLoggedIn && authState.userRole == null) return
+    // Xác định màn hình bắt đầu cố định lúc khởi tạo
+    val startDest = androidx.compose.runtime.remember {
+        when {
+            !authState.isLoggedIn -> Screen.Login.route
+            authState.userRole == "admin" -> Screen.Admin.route
+            else -> Screen.Home.route
+        }
+    }
+
+    // Lắng nghe thay đổi trạng thái đăng nhập để điều hướng
+    androidx.compose.runtime.LaunchedEffect(authState.isLoggedIn, authState.userRole) {
+        if (authState.isLoggedIn && authState.userRole != null) {
+            val target = if (authState.userRole == "admin") Screen.Admin.route else Screen.Home.route
+            navController.navigate(target) {
+                popUpTo(0) { inclusive = true }
+            }
+        } else if (!authState.isLoggedIn) {
+            val currentRoute = navController.currentDestination?.route
+            if (currentRoute != Screen.Login.route && currentRoute != Screen.Register.route) {
+                navController.navigate(Screen.Login.route) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+        }
+    }
 
     NavHost(navController = navController, startDestination = startDest) {
         // --- Màn hình Đăng nhập ---

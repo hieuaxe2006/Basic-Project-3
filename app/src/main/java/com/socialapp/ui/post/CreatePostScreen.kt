@@ -43,12 +43,12 @@ fun CreatePostScreen(
     var showCodeInput by remember { mutableStateOf(false) }
     var showTagSheet by remember { mutableStateOf(false) }
     var codeInput by remember { mutableStateOf("") }
-    var selectedLang by remember { mutableStateOf("Kotlin") }
+    var selectedLang by remember { mutableStateOf("Push") }
 
     val state = viewModel.state
     val context = LocalContext.current
     val scrollState = rememberScrollState()
-    val domains = listOf("Code", "Life", "Study", "Animal", "Food", "Exercise", "Music", "Travel")
+    val domains = listOf("Workout", "Nutrition", "Supplements", "Transformation", "Motivation", "Q&A")
 
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         viewModel.setImageUri(uri)
@@ -92,13 +92,109 @@ fun CreatePostScreen(
                 }
 
                 Spacer(Modifier.height(16.dp))
-                TextField(value = content, onValueChange = { content = it }, placeholder = { Text("Bạn đang nghĩ gì?") }, modifier = Modifier.fillMaxWidth(), colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent))
+                TextField(value = content, onValueChange = { content = it }, placeholder = { Text("Hôm nay bạn tập gì?") }, modifier = Modifier.fillMaxWidth(), colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AssistChip(
+                        onClick = { viewModel.autoTagContent(content) },
+                        label = {
+                            if (state.isAutoTagging) {
+                                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                            } else {
+                                Text("🤖 AI Gợi ý Tag")
+                            }
+                        },
+                        enabled = content.isNotBlank() && !state.isAutoTagging
+                    )
+                    AssistChip(
+                        onClick = { viewModel.getAiSuggestion(content) },
+                        label = {
+                            if (state.isAnalyzingAi) {
+                                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                            } else {
+                                Text("🤖 AI Phân tích bài")
+                            }
+                        },
+                        enabled = content.isNotBlank() && !state.isAnalyzingAi
+                    )
+                }
+
+                state.aiSuggestion?.let { suggestion ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00E676))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("🤖", fontSize = 16.sp)
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "AI Phân tích & Trả lời:",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF00E676)
+                                )
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = suggestion,
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
 
                 if (showCodeInput) {
                     Spacer(Modifier.height(16.dp))
-                    Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFF1E1E1E)).padding(8.dp)) {
-                        Text("Mã nguồn ($selectedLang)", color = Color.Cyan, fontSize = 11.sp)
-                        TextField(value = codeInput, onValueChange = { codeInput = it; viewModel.updateCode(it, selectedLang) }, modifier = Modifier.fillMaxWidth().height(150.dp), textStyle = TextStyle(fontFamily = FontFamily.Monospace, color = Color.White), colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent))
+                    Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFF1E1E1E)).padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Nhật ký tập luyện", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            
+                            var expanded by remember { mutableStateOf(false) }
+                            Box {
+                                Text(
+                                    text = "Loại: $selectedLang ▾",
+                                    color = Color.LightGray,
+                                    fontSize = 13.sp,
+                                    modifier = Modifier.clickable { expanded = true }
+                                )
+                                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                    listOf("Push", "Pull", "Legs", "Cardio", "FullBody").forEach { type ->
+                                        DropdownMenuItem(
+                                            text = { Text(type) },
+                                            onClick = {
+                                                selectedLang = type
+                                                viewModel.updateCode(codeInput, type)
+                                                expanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        TextField(
+                            value = codeInput,
+                            onValueChange = { codeInput = it; viewModel.updateCode(it, selectedLang) },
+                            placeholder = { Text("VD:\nBench Press - 4x10 @ 80kg\nSquat - 5x5 @ 100kg\n// Thêm ghi chú...", color = Color.Gray) },
+                            modifier = Modifier.fillMaxWidth().height(150.dp),
+                            textStyle = TextStyle(fontFamily = FontFamily.Monospace, color = Color.White),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                cursorColor = Color.White
+                            )
+                        )
                     }
                 }
 
@@ -116,7 +212,7 @@ fun CreatePostScreen(
                     Spacer(Modifier.height(16.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
                         IconButton(onClick = { imagePicker.launch("image/*") }) { Icon(Icons.Outlined.Image, null, tint = Color(0xFF45BD62)) }
-                        IconButton(onClick = { showCodeInput = !showCodeInput }) { Icon(Icons.Default.Code, null, tint = if (showCodeInput) Color(0xFF1877F2) else Color(0xFFF7B928)) }
+                        IconButton(onClick = { showCodeInput = !showCodeInput }) { Icon(Icons.Default.FitnessCenter, null, tint = if (showCodeInput) MaterialTheme.colorScheme.primary else Color.Gray) }
                         IconButton(onClick = { viewModel.loadFriends(); showTagSheet = true }) { Icon(Icons.Outlined.PersonAdd, null, tint = Color(0xFF1877F2)) }
                     }
                 }

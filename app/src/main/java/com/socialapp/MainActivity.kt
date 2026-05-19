@@ -18,7 +18,7 @@ import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessaging
 import com.socialapp.data.repository.UserRepository
 import com.socialapp.navigation.AppNavigation
-import com.socialapp.ui.theme.SocialAppTheme
+import com.socialapp.ui.theme.GymHubTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -66,19 +66,21 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Lấy FCM Token và cập nhật lên Firestore
-                FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        val token = task.result
-                        val repo = UserRepository()
-                        CoroutineScope(Dispatchers.IO).launch {
-                            repo.updateFcmToken(token)
+                // Lấy FCM Token và cập nhật lên Firestore (chỉ khi đã đăng nhập)
+                val repo = UserRepository()
+                if (repo.currentUid != null) {
+                    FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            val token = task.result
+                            CoroutineScope(Dispatchers.IO).launch {
+                                repo.updateFcmToken(token)
+                            }
                         }
                     }
                 }
             }
 
-            SocialAppTheme(darkTheme = isDark) {
+            GymHubTheme(darkTheme = isDark) {
                 AppNavigation()
             }
         }

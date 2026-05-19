@@ -15,31 +15,31 @@ import androidx.compose.ui.unit.sp
 
 // ===== Design System Colors =====
 // Primary
-val Primary = Color(0xFF1877F2)
-val PrimaryLight = Color(0xFFE7F3FF)
-val PrimaryDark = Color(0xFF0F5BD3)
+val Primary = Color(0xFFFF5722) // Energetic Orange
+val PrimaryLight = Color(0xFFFBE9E7)
+val PrimaryDark = Color(0xFFD84315)
 
 // Semantic
-val Secondary = Color(0xFF42B72A)
-val Danger = Color(0xFFE41E3F)
-val Warning = Color(0xFFF7B928)
-val Success = Color(0xFF31A24C)
+val Secondary = Color(0xFF4CAF50)
+val Danger = Color(0xFFE53935)
+val Warning = Color(0xFFFFB300)
+val Success = Color(0xFF4CAF50)
 
 // Surface & Background
-val Background = Color(0xFFF0F2F5)
+val Background = Color(0xFFF5F5F5)
 val CardBackground = Color(0xFFFFFFFF)
-val BorderColor = Color(0xFFDADDE1)
+val BorderColor = Color(0xFFE0E0E0)
 
 // Text
-val TextPrimary = Color(0xFF050505)
-val TextSecondary = Color(0xFF606770)
+val TextPrimary = Color(0xFF212121)
+val TextSecondary = Color(0xFF757575)
 
 // Dark theme equivalents
-val DarkBackground = Color(0xFF18191A)
-val DarkCard = Color(0xFF242526)
-val DarkBorder = Color(0xFF3E4042)
-val DarkTextPrimary = Color(0xFFE4E6EB)
-val DarkTextSecondary = Color(0xFFB0B3B8)
+val DarkBackground = Color(0xFF121212) // Carbon Dark
+val DarkCard = Color(0xFF1E1E1E)
+val DarkBorder = Color(0xFF2C2C2C)
+val DarkTextPrimary = Color(0xFFF5F5F5)
+val DarkTextSecondary = Color(0xFFB0B0B0)
 
 private val LightColors = lightColorScheme(
     primary = Primary,
@@ -58,15 +58,15 @@ private val LightColors = lightColorScheme(
     onError = Color.White,
     outline = BorderColor,
     outlineVariant = BorderColor,
-    surfaceVariant = Color(0xFFE4E6EB)
+    surfaceVariant = Color(0xFFEEEEEE)
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFF4599FF),
+    primary = Primary,
     onPrimary = Color.White,
     primaryContainer = PrimaryDark,
     onPrimaryContainer = PrimaryLight,
-    secondary = Color(0xFF5BD348),
+    secondary = Color(0xFF81C784),
     onSecondary = Color.White,
     secondaryContainer = Color(0xFF1B3A1B),
     background = DarkBackground,
@@ -74,11 +74,11 @@ private val DarkColors = darkColorScheme(
     surface = DarkCard,
     onSurface = DarkTextPrimary,
     onSurfaceVariant = DarkTextSecondary,
-    error = Color(0xFFFF6B7A),
+    error = Color(0xFFFF8A80),
     onError = Color.White,
     outline = DarkBorder,
     outlineVariant = DarkBorder,
-    surfaceVariant = Color(0xFF3A3B3C)
+    surfaceVariant = Color(0xFF2C2C2C)
 )
 
 // ===== Design System Typography =====
@@ -152,7 +152,7 @@ val AppTypography = Typography(
 )
 
 @Composable
-fun SocialAppTheme(
+fun GymHubTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {

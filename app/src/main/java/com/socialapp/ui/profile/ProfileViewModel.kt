@@ -40,7 +40,9 @@ data class ProfileState(
     val isSharing: Boolean = false,
     val shareSuccess: String? = null,
     val searchResults: List<User> = emptyList(),
-    val isSearching: Boolean = false
+    val isSearching: Boolean = false,
+    val generatedWorkout: String? = null,
+    val isGeneratingWorkout: Boolean = false
 )
 
 class ProfileViewModel : ViewModel() {
@@ -214,6 +216,35 @@ class ProfileViewModel : ViewModel() {
         }
     }
 
+    fun updateGymMetrics(
+        height: Double,
+        weight: Double,
+        bodyFat: Double,
+        benchPr: Double,
+        squatPr: Double,
+        deadliftPr: Double
+    ) {
+        val uid = state.user?.id ?: return
+        viewModelScope.launch {
+            state = state.copy(isSaving = true)
+            repo.updateGymMetrics(uid, height, weight, bodyFat, benchPr, squatPr, deadliftPr)
+                .onSuccess {
+                    state = state.copy(
+                        isSaving = false,
+                        user = state.user?.copy(
+                            height = height,
+                            weight = weight,
+                            body_fat = bodyFat,
+                            bench_pr = benchPr,
+                            squat_pr = squatPr,
+                            deadlift_pr = deadliftPr
+                        )
+                    )
+                }
+                .onFailure { state = state.copy(isSaving = false, error = it.message) }
+        }
+    }
+
     fun uploadAvatar(uri: Uri, context: Context) {
         val uid = state.user?.id ?: return
         viewModelScope.launch {
@@ -266,4 +297,31 @@ class ProfileViewModel : ViewModel() {
 
     val isFollowing: Boolean
         get() = state.isFollowing
+
+    fun generateWorkoutPlan() {
+        val user = state.user ?: return
+        viewModelScope.launch {
+            state = state.copy(isGeneratingWorkout = true)
+            val prompt = """
+                Hãy đóng vai một chuyên gia thể hình hàng đầu và tạo một kế hoạch tập luyện cá nhân hóa chi tiết dựa trên các chỉ số sau:
+                - Chiều cao: ${if(user.height > 0) user.height.toInt().toString() + " cm" else "Chưa cung cấp"}
+                - Cân nặng: ${if(user.weight > 0) user.weight.toString() + " kg" else "Chưa cung cấp"}
+                - Tỷ lệ mỡ: ${if(user.body_fat > 0) user.body_fat.toString() + "%" else "Chưa cung cấp"}
+                - Kỷ lục Bench Press: ${if(user.bench_pr > 0) user.bench_pr.toString() + " kg" else "Chưa cung cấp"}
+                - Kỷ lục Squat: ${if(user.squat_pr > 0) user.squat_pr.toString() + " kg" else "Chưa cung cấp"}
+                - Kỷ lục Deadlift: ${if(user.deadlift_pr > 0) user.deadlift_pr.toString() + " kg" else "Chưa cung cấp"}
+                Hãy đưa ra lịch tập trong tuần cụ thể, số sets/reps và lời khuyên dinh dưỡng ngắn gọn phù hợp với thể trạng của họ.
+            """.trimIndent()
+
+            com.socialapp.data.remote.GeminiApi.generateContent(prompt).onSuccess { result ->
+                state = state.copy(generatedWorkout = result, isGeneratingWorkout = false)
+            }.onFailure {
+                state = state.copy(generatedWorkout = "Không thể kết nối đến máy chủ AI. Vui lòng kiểm tra lại kết nối mạng.", isGeneratingWorkout = false)
+            }
+        }
+    }
+
+    fun clearGeneratedWorkout() {
+        state = state.copy(generatedWorkout = null)
+    }
 }

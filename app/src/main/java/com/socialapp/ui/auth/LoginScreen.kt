@@ -31,7 +31,7 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "SocialApp",
+            text = "GymHub",
             style = MaterialTheme.typography.displayMedium,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold,
@@ -39,7 +39,7 @@ fun LoginScreen(
         )
         
         Text(
-            text = "Kết nối với bạn bè và thế giới xung quanh.",
+            text = "Cộng đồng thể hình số 1 Việt Nam",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 32.dp)
