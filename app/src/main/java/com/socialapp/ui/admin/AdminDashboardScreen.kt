@@ -109,9 +109,9 @@ fun PostsTab(
     LazyColumn {
         items(state.posts) { post ->
             val statusColor = when (post.status) {
-                "approved" -> Color(0xFF2E7D32) // Green
-                "rejected" -> Color(0xFFC62828) // Red
-                else -> Color(0xFFEF6C00) // Orange (pending)
+                "approved" -> Color(0xFF2E7D32) // Xanh lá
+                "rejected" -> Color(0xFFC62828) // Đỏ
+                else -> Color(0xFFEF6C00) // Cam (Chờ duyệt)
             }
             val statusText = when (post.status) {
                 "approved" -> "Đã duyệt"
@@ -139,6 +139,7 @@ fun PostsTab(
                 },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Chỉ hiện nút duyệt/từ chối nếu bài chưa được duyệt hoặc đã bị từ chối trước đó
                         if (post.status == "pending") {
                             IconButton(onClick = { onApprove(post.id) }) {
                                 Icon(Icons.Default.CheckCircle, tint = Color(0xFF2E7D32), contentDescription = "Duyệt")
@@ -147,6 +148,7 @@ fun PostsTab(
                                 Icon(Icons.Default.Block, tint = Color(0xFFC62828), contentDescription = "Từ chối")
                             }
                         } else if (post.status == "approved") {
+                            // Nếu đã duyệt rồi vẫn có thể thu hồi (chuyển sang từ chối)
                             IconButton(onClick = { onReject(post.id) }) {
                                 Icon(Icons.Default.Block, tint = Color(0xFFC62828), contentDescription = "Từ chối")
                             }
