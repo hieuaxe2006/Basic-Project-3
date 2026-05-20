@@ -9,6 +9,7 @@ data class Story(
     val text: String = "",
     val backgroundColor: String = "",
     val type: String = "image", // "image", "video", "text"
+    val visibility: String = "public", // "public", "friends", "private"
     val createdAt: Timestamp = Timestamp.now(),
     val expiresAt: Timestamp = Timestamp.now()
 )

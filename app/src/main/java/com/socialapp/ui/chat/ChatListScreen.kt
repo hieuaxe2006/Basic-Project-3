@@ -289,6 +289,86 @@ private fun FriendRequestItem(user: User, onAccept: () -> Unit) {
 }
 
 @Composable
+private fun ActiveUserItem(
+    user: User,
+    label: String,
+    isCurrentUser: Boolean,
+    onNoteClick: (() -> Unit)? = null
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(68.dp)
+    ) {
+        // Upper area: note bubble (or empty spacer) with fixed height of 32.dp
+        Box(
+            modifier = Modifier
+                .height(32.dp)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            if (user.note.isNotBlank()) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = if (onNoteClick != null) Modifier.clickable { onNoteClick() } else Modifier
+                ) {
+                    Text(
+                        text = user.note,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+        
+        Spacer(Modifier.height(4.dp))
+        
+        // Avatar area
+        Box(contentAlignment = Alignment.Center) {
+            UserAvatar(user, size = 56.dp, onClick = onNoteClick)
+            if (isCurrentUser) {
+                Box(
+                    modifier = Modifier
+                        .size(18.dp)
+                        .align(Alignment.BottomEnd)
+                        .background(Color.White, CircleShape)
+                        .padding(2.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.primary, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(10.dp)
+                        )
+                    }
+                }
+            }
+        }
+        
+        Spacer(Modifier.height(6.dp))
+        
+        // Label/Username area
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = if (isCurrentUser) Color.Gray else MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            textAlign = TextAlign.Center,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
 private fun ActiveUsersRow(currentUser: User?, partners: List<User>, onNoteClick: () -> Unit) {
     LazyRow(
         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
@@ -296,37 +376,44 @@ private fun ActiveUsersRow(currentUser: User?, partners: List<User>, onNoteClick
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(64.dp)) {
-                Box(contentAlignment = Alignment.TopCenter) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        if (currentUser?.note?.isNotBlank() == true) {
-                            Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(12.dp), modifier = Modifier.padding(bottom = 4.dp)) {
-                                Text(currentUser.note, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                        } else { Spacer(Modifier.height(20.dp)) }
-                        Box {
-                            UserAvatar(currentUser ?: User(username = "You"), size = 56.dp, onClick = onNoteClick)
-                            Box(modifier = Modifier.size(18.dp).align(Alignment.BottomEnd).background(Color.White, CircleShape).padding(2.dp)) {
-                                Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary, CircleShape), contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.Edit, null, tint = Color.White, modifier = Modifier.size(10.dp))
-                                }
-                            }
-                        }
-                    }
-                }
-                Spacer(Modifier.height(4.dp))
-                Text("Ghi chú", fontSize = 12.sp, color = Color.Gray)
-            }
+            ActiveUserItem(
+                user = currentUser ?: User(username = "You"),
+                label = "Ghi chú",
+                isCurrentUser = true,
+                onNoteClick = onNoteClick
+            )
         }
         items(partners) { user ->
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(56.dp)) {
-                Spacer(Modifier.height(20.dp))
-                UserAvatar(user, size = 56.dp)
-                Spacer(Modifier.height(4.dp))
-                Text(user.username.split(" ").first(), fontSize = 12.sp, maxLines = 1, textAlign = TextAlign.Center)
-            }
+            ActiveUserItem(
+                user = user,
+                label = user.username.split(" ").firstOrNull() ?: "",
+                isCurrentUser = false,
+                onNoteClick = null
+            )
         }
     }
+}
+
+fun getAvatarBgColor(userId: String): Color {
+    val colors = listOf(
+        Color(0xFFE57373), // Red
+        Color(0xFFF06292), // Pink
+        Color(0xFFBA68C8), // Purple
+        Color(0xFF9575CD), // Deep Purple
+        Color(0xFF7986CB), // Indigo
+        Color(0xFF64B5F6), // Blue
+        Color(0xFF4FC3F7), // Light Blue
+        Color(0xFF4DB6AC), // Teal
+        Color(0xFF81C784), // Green
+        Color(0xFFAED581), // Light Green
+        Color(0xFFFFB74D), // Orange
+        Color(0xFFFF8A65), // Deep Orange
+        Color(0xFFA1887F), // Brown
+        Color(0xFF90A4AE)  // Blue Grey
+    )
+    if (userId.isBlank()) return Color(0xFF90A4AE)
+    val index = Math.abs(userId.hashCode()) % colors.size
+    return colors[index]
 }
 
 @Composable
@@ -335,9 +422,10 @@ fun UserAvatar(user: User, size: androidx.compose.ui.unit.Dp, onClick: (() -> Un
     if (user.avatar.isNotBlank()) {
         AsyncImage(model = user.avatar, contentDescription = null, modifier = modifier, contentScale = ContentScale.Crop)
     } else {
-        Surface(modifier = modifier, shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+        val bgColor = remember(user.id) { getAvatarBgColor(user.id) }
+        Surface(modifier = modifier, shape = CircleShape, color = bgColor) {
             Box(contentAlignment = Alignment.Center) {
-                Text(user.username.take(1).uppercase(), style = MaterialTheme.typography.titleMedium)
+                Text(user.username.take(1).uppercase(), style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
     }

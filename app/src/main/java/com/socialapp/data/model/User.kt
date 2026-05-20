@@ -7,17 +7,24 @@ data class User(
     val avatar: String = "",
     val bio: String = "",
     val note: String = "",
-    val fcm_token: String = "", // Thêm biến này
+    val fcm_token: String = "",
     val followers_count: Int = 0,
     val following_count: Int = 0,
     val is_premium: Boolean = false,
     val is_private: Boolean = false,
     val is_blocked: Boolean = false,
+    val blocked_users: List<String> = emptyList(),
+    val muted_users: List<String> = emptyList(),
     val role: String = "user",
     val height: Double = 0.0,
     val weight: Double = 0.0,
     val body_fat: Double = 0.0,
     val bench_pr: Double = 0.0,
     val squat_pr: Double = 0.0,
-    val deadlift_pr: Double = 0.0
+    val deadlift_pr: Double = 0.0,
+    val age: Int = 0,
+    val hometown: String = "",
+    val birthday: String = "",
+    val hobbies: String = "",
+    val trainingRegime: String = ""
 )

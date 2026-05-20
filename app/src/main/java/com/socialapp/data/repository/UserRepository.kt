@@ -32,6 +32,28 @@ class UserRepository {
         db.collection("users").document(uid).update(updates).await()
     }
 
+    suspend fun updateProfileExt(
+        uid: String,
+        username: String,
+        bio: String,
+        age: Int,
+        hometown: String,
+        birthday: String,
+        hobbies: String,
+        trainingRegime: String
+    ): Result<Unit> = runCatching {
+        val updates = mapOf<String, Any>(
+            "username" to username,
+            "bio" to bio,
+            "age" to age,
+            "hometown" to hometown,
+            "birthday" to birthday,
+            "hobbies" to hobbies,
+            "trainingRegime" to trainingRegime
+        )
+        db.collection("users").document(uid).update(updates).await()
+    }
+
     suspend fun updateAvatar(uid: String, avatarUrl: String): Result<Unit> = runCatching {
         db.collection("users").document(uid).update("avatar", avatarUrl).await()
     }

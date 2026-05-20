@@ -1,11 +1,13 @@
 package com.socialapp.ui.chat
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -41,6 +43,8 @@ fun ChatInfoScreen(
 
     LaunchedEffect(uid) {
         user = repo.getUserSnapshot(uid).firstOrNull()
+        // Kiểm tra xem đã chặn chưa khi vào màn hình
+        chatInfoViewModel.checkBlockStatus(uid)
     }
 
     LaunchedEffect(chatInfoViewModel.message) {
@@ -52,13 +56,16 @@ fun ChatInfoScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Chi tiết") },
+            CenterAlignedTopAppBar(
+                title = { Text("Thông tin hội thoại", style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         }
     ) { padding ->
@@ -70,59 +77,102 @@ fun ChatInfoScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(32.dp))
             
-            // Avatar
-            Surface(
-                modifier = Modifier.size(100.dp),
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(name.take(1).uppercase(), fontSize = 40.sp, fontWeight = FontWeight.Bold)
+            // Avatar with a slightly different style
+            Box(contentAlignment = Alignment.BottomEnd) {
+                Surface(
+                    modifier = Modifier.size(120.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shadowElevation = 4.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(name.take(1).uppercase(), fontSize = 48.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
                 }
+                Surface(
+                    modifier = Modifier.size(32.dp),
+                    shape = CircleShape,
+                    color = Color(0xFF4CAF50),
+                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.surface)
+                ) {}
             }
             
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
             
-            Text(name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text("@${user?.username ?: ""}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            
+            Spacer(Modifier.height(40.dp))
+            
+            // Reorganized layout: Using a modern card-based design instead of a simple row
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            ) {
+                Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                    InfoItem(
+                        icon = Icons.Default.AccountCircle, 
+                        text = "Xem trang cá nhân",
+                        description = "Xem thông tin chi tiết về người này"
+                    ) { onViewProfile(uid) }
+                    
+                    Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                    
+                    InfoItem(
+                        icon = if (chatInfoViewModel.isMuted) Icons.Default.NotificationsOff else Icons.Default.Notifications, 
+                        text = if (chatInfoViewModel.isMuted) "Đã tắt thông báo" else "Thông báo",
+                        description = if (chatInfoViewModel.isMuted) "Bạn sẽ không nhận được thông báo" else "Nhận thông báo khi có tin nhắn mới"
+                    ) { 
+                        chatInfoViewModel.muteUser(uid) 
+                    }
+                }
+            }
             
             Spacer(Modifier.height(24.dp))
             
-            // Action Buttons (Facebook style)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+            Text(
+                "Quyền riêng tư & Hỗ trợ", 
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 8.dp),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f))
             ) {
-                InfoActionButton(icon = Icons.Default.Person, label = "Trang cá nhân") { onViewProfile(uid) }
-                InfoActionButton(
-                    icon = if (chatInfoViewModel.isMuted) Icons.Default.NotificationsOff else Icons.Default.Notifications, 
-                    label = if (chatInfoViewModel.isMuted) "Đã tắt" else "Tắt thông báo"
-                ) { 
-                    chatInfoViewModel.muteUser(uid) 
-                }
-                InfoActionButton(icon = Icons.Default.Search, label = "Tìm kiếm") { 
-                    Toast.makeText(context, "Chức năng tìm kiếm tin nhắn đang được phát triển", Toast.LENGTH_SHORT).show()
+                Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                    InfoItem(
+                        icon = Icons.Default.Block, 
+                        text = if (chatInfoViewModel.isBlocked) "Bỏ chặn" else "Chặn", 
+                        textColor = Color.Red,
+                        description = "Người này sẽ không thể nhắn tin cho bạn"
+                    ) {
+                        chatInfoViewModel.toggleBlockUser(uid)
+                    }
+                    
+                    Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                    
+                    InfoItem(
+                        icon = Icons.Default.Report, 
+                        text = "Báo cáo người dùng", 
+                        textColor = Color.Red,
+                        description = "Gửi phản hồi về người dùng này cho quản trị viên"
+                    ) {
+                        showReportDialog = true
+                    }
                 }
             }
             
-            Spacer(Modifier.height(32.dp))
-            
-            // Options List
-            Column(modifier = Modifier.fillMaxWidth()) {
-                InfoItem(icon = Icons.Default.Image, text = "Xem file phương tiện, file và liên kết") {
-                    Toast.makeText(context, "Chức năng xem file đang được phát triển", Toast.LENGTH_SHORT).show()
-                }
-                InfoItem(icon = Icons.Default.PushPin, text = "Xem tin nhắn đã ghim") {
-                    Toast.makeText(context, "Chức năng tin nhắn ghim đang được phát triển", Toast.LENGTH_SHORT).show()
-                }
-                InfoItem(icon = Icons.Default.Block, text = if (chatInfoViewModel.isBlocked) "Đã chặn" else "Chặn", textColor = Color.Red) {
-                    chatInfoViewModel.blockUser(uid)
-                }
-                InfoItem(icon = Icons.Default.Report, text = "Báo cáo", textColor = Color.Red) {
-                    showReportDialog = true
-                }
-            }
+            Spacer(Modifier.height(40.dp))
         }
     }
 
@@ -136,17 +186,21 @@ fun ChatInfoScreen(
                     value = reason,
                     onValueChange = { reason = it },
                     placeholder = { Text("Lý do báo cáo...") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    if (reason.isNotBlank()) {
-                        chatInfoViewModel.reportUser(uid, reason)
-                        showReportDialog = false
-                    }
-                }) {
-                    Text("Gửi")
+                Button(
+                    onClick = {
+                        if (reason.isNotBlank()) {
+                            chatInfoViewModel.reportUser(uid, reason)
+                            showReportDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Gửi báo cáo")
                 }
             },
             dismissButton = {
@@ -159,29 +213,10 @@ fun ChatInfoScreen(
 }
 
 @Composable
-private fun InfoActionButton(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { onClick() }.width(80.dp)
-    ) {
-        Surface(
-            modifier = Modifier.size(40.dp),
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceVariant
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(icon, null, modifier = Modifier.size(20.dp))
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(label, fontSize = 12.sp, maxLines = 1)
-    }
-}
-
-@Composable
 private fun InfoItem(
     icon: ImageVector, 
     text: String, 
+    description: String? = null,
     textColor: Color = Color.Unspecified,
     onClick: () -> Unit
 ) {
@@ -189,16 +224,43 @@ private fun InfoItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(16.dp),
+            .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            icon, 
-            null, 
-            modifier = Modifier.size(24.dp), 
-            tint = if (textColor != Color.Unspecified) textColor else MaterialTheme.colorScheme.onSurface
-        )
+        Surface(
+            modifier = Modifier.size(40.dp),
+            shape = CircleShape,
+            color = if (textColor == Color.Red) Color.Red.copy(alpha = 0.1f) else MaterialTheme.colorScheme.secondaryContainer
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    icon, 
+                    null, 
+                    modifier = Modifier.size(22.dp), 
+                    tint = if (textColor != Color.Unspecified) textColor else MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+        }
         Spacer(Modifier.width(16.dp))
-        Text(text, style = MaterialTheme.typography.bodyLarge, color = textColor)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = text, 
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold), 
+                color = if (textColor != Color.Unspecified) textColor else MaterialTheme.colorScheme.onSurface
+            )
+            if (description != null) {
+                Text(
+                    text = description, 
+                    style = MaterialTheme.typography.bodySmall, 
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Icon(
+            Icons.Default.ChevronRight, 
+            null, 
+            modifier = Modifier.size(20.dp), 
+            tint = MaterialTheme.colorScheme.outline
+        )
     }
 }

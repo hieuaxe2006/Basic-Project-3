@@ -69,4 +69,24 @@ class AdminViewModel : ViewModel() {
             }
         }
     }
+
+    fun approvePost(postId: String) {
+        viewModelScope.launch {
+            repo.approvePost(postId).onSuccess {
+                loadData()
+            }.onFailure {
+                state = state.copy(error = it.message)
+            }
+        }
+    }
+
+    fun rejectPost(postId: String) {
+        viewModelScope.launch {
+            repo.rejectPost(postId).onSuccess {
+                loadData()
+            }.onFailure {
+                state = state.copy(error = it.message)
+            }
+        }
+    }
 }

@@ -19,6 +19,48 @@ class AdminRepository {
         db.collection("posts").document(postId).delete().await()
     }
 
+    suspend fun approvePost(postId: String): Result<Unit> = runCatching {
+        val postRef = db.collection("posts").document(postId)
+        postRef.update("status", "approved", "moderated_at", com.google.firebase.Timestamp.now()).await()
+
+        val postDoc = postRef.get().await()
+        val post = postDoc.toObject(Post::class.java)
+        if (post != null) {
+            val notification = com.socialapp.data.model.Notification(
+                receiverId = post.user_id,
+                senderId = "system",
+                senderName = "Hệ thống",
+                senderAvatar = "",
+                type = "post_approved",
+                postId = postId,
+                content = "Bài viết của bạn đã được phê duyệt và hiển thị với mọi người!"
+            )
+            val notifRef = db.collection("notifications").document()
+            notifRef.set(notification.copy(id = notifRef.id, createdAt = com.google.firebase.Timestamp.now())).await()
+        }
+    }
+
+    suspend fun rejectPost(postId: String): Result<Unit> = runCatching {
+        val postRef = db.collection("posts").document(postId)
+        postRef.update("status", "rejected", "moderated_at", com.google.firebase.Timestamp.now()).await()
+
+        val postDoc = postRef.get().await()
+        val post = postDoc.toObject(Post::class.java)
+        if (post != null) {
+            val notification = com.socialapp.data.model.Notification(
+                receiverId = post.user_id,
+                senderId = "system",
+                senderName = "Hệ thống",
+                senderAvatar = "",
+                type = "post_rejected",
+                postId = postId,
+                content = "Bài viết của bạn đã bị từ chối phê duyệt do vi phạm tiêu chuẩn cộng đồng."
+            )
+            val notifRef = db.collection("notifications").document()
+            notifRef.set(notification.copy(id = notifRef.id, createdAt = com.google.firebase.Timestamp.now())).await()
+        }
+    }
+
     suspend fun toggleBlockUser(uid: String, isBlocked: Boolean): Result<Unit> = runCatching {
         db.collection("users").document(uid).update("is_blocked", isBlocked).await()
     }

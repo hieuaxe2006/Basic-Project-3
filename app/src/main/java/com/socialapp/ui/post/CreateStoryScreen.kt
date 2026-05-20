@@ -7,27 +7,28 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.socialapp.utils.t
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,12 +38,11 @@ fun CreateStoryScreen(
     viewModel: CreateStoryViewModel = viewModel()
 ) {
     val state = viewModel.state
-    val context = LocalContext.current
 
-    val imagePicker = rememberLauncherForActivityResult(
+    val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { viewModel.onImageSelected(it) }
+        viewModel.updateImage(uri)
     }
 
     LaunchedEffect(state.isSuccess) {
@@ -54,15 +54,15 @@ fun CreateStoryScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Tạo tin", fontWeight = FontWeight.Bold) },
+                title = { Text(t("create_story"), fontWeight = FontWeight.Bold, color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* Settings */ }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    IconButton(onClick = { imagePickerLauncher.launch("image/*") }) {
+                        Icon(Icons.Default.Image, contentDescription = "Pick Image", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -70,145 +70,37 @@ fun CreateStoryScreen(
                 )
             )
         },
-        containerColor = Color(0xFF1C1C1E) // Dark background like the image
+        containerColor = Color(0xFF1C1C1E)
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Top Selection Buttons
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StoryOptionButton(
-                    icon = Icons.Default.TextFields,
-                    label = "Văn bản",
-                    gradient = Brush.verticalGradient(listOf(Color(0xFF8E44AD), Color(0xFF3498DB))),
-                    onClick = { viewModel.onTextTypeSelected() },
-                    modifier = Modifier.weight(1f)
-                )
-                StoryOptionButton(
-                    icon = Icons.Default.MusicNote,
-                    label = "Nhạc",
-                    gradient = Brush.verticalGradient(listOf(Color(0xFFF1C40F), Color(0xFFE67E22))),
-                    onClick = { /* Handle music */ },
-                    modifier = Modifier.weight(1f)
-                )
-                StoryOptionButton(
-                    icon = Icons.Default.GridView,
-                    label = "Nhóm ảnh",
-                    gradient = Brush.verticalGradient(listOf(Color(0xFF2ECC71), Color(0xFF27AE60))),
-                    onClick = { /* Handle grid */ },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Selection Area
-            if (state.storyType == "text") {
-                TextStoryCreator(
-                    text = state.textContent,
-                    onTextChange = { viewModel.updateText(it) },
-                    backgroundColor = state.backgroundColor,
-                    onColorChange = { viewModel.updateColor(it) },
-                    onPost = { viewModel.createStory() },
-                    isLoading = state.isLoading
-                )
-            } else if (state.selectedUri != null) {
-                ImageStoryPreview(
-                    uri = state.selectedUri,
-                    onPost = { viewModel.createStory() },
-                    onCancel = { viewModel.reset() },
-                    isLoading = state.isLoading
-                )
-            } else {
-                // Placeholder for Gallery view (simplified)
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Thư viện", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Surface(
-                            onClick = { imagePicker.launch("image/*") },
-                            color = Color.White.copy(alpha = 0.1f),
-                            shape = RoundedCornerShape(20.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.PhotoLibrary, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Chọn nhiều file", color = Color.White, fontSize = 12.sp)
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    // Simulated Gallery Grid
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(1.dp),
-                        horizontalArrangement = Arrangement.spacedBy(1.dp),
-                        verticalArrangement = Arrangement.spacedBy(1.dp)
-                    ) {
-                        items(15) { index ->
-                            Box(
-                                modifier = Modifier
-                                    .aspectRatio(1f)
-                                    .background(Color.DarkGray)
-                                    .clickable { imagePicker.launch("image/*") },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(Icons.Default.Image, null, tint = Color.Gray)
-                            }
-                        }
-                    }
-                }
-            }
+            StoryCreator(
+                text = state.textContent,
+                onTextChange = { viewModel.updateText(it) },
+                backgroundColor = state.backgroundColor,
+                onColorChange = { viewModel.updateColor(it) },
+                selectedImageUri = state.selectedImageUri,
+                visibility = state.visibility,
+                onVisibilityChange = { viewModel.updateVisibility(it) },
+                onPost = { viewModel.createStory() },
+                isLoading = state.isLoading
+            )
         }
     }
 }
 
 @Composable
-fun StoryOptionButton(
-    icon: ImageVector,
-    label: String,
-    gradient: Brush,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(gradient)
-            .clickable { onClick() }
-            .padding(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(icon, contentDescription = null, tint = Color.White)
-        Spacer(Modifier.height(4.dp))
-        Text(label, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-    }
-}
-
-@Composable
-fun TextStoryCreator(
+fun StoryCreator(
     text: String,
     onTextChange: (String) -> Unit,
     backgroundColor: String,
     onColorChange: (String) -> Unit,
+    selectedImageUri: Uri?,
+    visibility: String,
+    onVisibilityChange: (String) -> Unit,
     onPost: () -> Unit,
     isLoading: Boolean
 ) {
@@ -217,14 +109,27 @@ fun TextStoryCreator(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(android.graphics.Color.parseColor(backgroundColor))),
+            .background(if (selectedImageUri == null) Color(android.graphics.Color.parseColor(backgroundColor)) else Color.Black),
         contentAlignment = Alignment.Center
     ) {
+        if (selectedImageUri != null) {
+            AsyncImage(
+                model = selectedImageUri,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            // Overlay for text
+            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)))
+        }
+
         TextField(
             value = text,
             onValueChange = onTextChange,
-            placeholder = { Text("Bắt đầu nhập", color = Color.White.copy(alpha = 0.5f), fontSize = 24.sp) },
-            modifier = Modifier.fillMaxWidth().padding(32.dp),
+            placeholder = { Text(t("start_typing"), color = Color.White.copy(alpha = 0.5f), fontSize = 24.sp) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
@@ -234,83 +139,81 @@ fun TextStoryCreator(
                 unfocusedIndicatorColor = Color.Transparent
             ),
             textStyle = MaterialTheme.typography.headlineMedium.copy(
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                textAlign = TextAlign.Center,
                 color = Color.White
             )
         )
 
-        // Color selectors
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 100.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        // Bottom Controls
+        Column(
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            colors.forEach { hex ->
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(Color(android.graphics.Color.parseColor(hex)))
-                        .border(
-                            width = if (backgroundColor == hex) 2.dp else 0.dp,
-                            color = Color.White,
-                            shape = CircleShape
-                        )
-                        .clickable { onColorChange(hex) }
-                )
-            }
-        }
-
-        Button(
-            onClick = onPost,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp),
-            enabled = text.isNotBlank() && !isLoading,
-            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
-        ) {
-            if (isLoading) CircularProgressIndicator(Modifier.size(20.dp), color = Color.Black)
-            else Text("Chia sẻ", fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-fun ImageStoryPreview(
-    uri: Uri,
-    onPost: () -> Unit,
-    onCancel: () -> Unit,
-    isLoading: Boolean
-) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        AsyncImage(
-            model = uri,
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Button(
-                onClick = onCancel,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.5f))
+            // Visibility Selector
+            Row(
+                modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(16.dp)).padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("Hủy")
+                val visibilityOptions = listOf(
+                    Triple("public", Icons.Default.Public, "Công khai"),
+                    Triple("friends", Icons.Default.Group, "Bạn bè"),
+                    Triple("private", Icons.Default.Lock, "Chỉ mình tôi")
+                )
+                
+                visibilityOptions.forEach { (v, icon, label) ->
+                    val isSelected = visibility == v
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
+                            .clickable { onVisibilityChange(v) }
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(imageVector = icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(label, color = Color.White, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                    }
+                }
             }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Color selectors
+            if (selectedImageUri == null) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    colors.forEach { hex ->
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color(android.graphics.Color.parseColor(hex)))
+                                .border(
+                                    width = if (backgroundColor == hex) 2.dp else 0.dp,
+                                    color = Color.White,
+                                    shape = CircleShape
+                                )
+                                .clickable { onColorChange(hex) }
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
             Button(
                 onClick = onPost,
-                enabled = !isLoading,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1877F2))
+                enabled = (text.isNotBlank() || selectedImageUri != null) && !isLoading,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)
             ) {
-                if (isLoading) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White)
-                else Text("Chia sẻ ngay", fontWeight = FontWeight.Bold)
+                if (isLoading) {
+                    CircularProgressIndicator(Modifier.size(20.dp), color = Color.Black)
+                } else {
+                    Text(t("share"), fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

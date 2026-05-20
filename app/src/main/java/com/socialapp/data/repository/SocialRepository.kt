@@ -6,12 +6,14 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.ListenerRegistration
 import com.socialapp.data.model.Comment
 import com.socialapp.data.model.FriendRequest
 import com.socialapp.data.model.Notification
 import com.socialapp.data.model.Post
 import com.socialapp.data.model.Story
 import com.socialapp.data.model.User
+import com.socialapp.data.model.Group
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -139,9 +141,29 @@ class SocialRepository {
         db.collection("users").document(uid).update("blocked_users", FieldValue.arrayUnion(targetUid)).await()
     }
 
+    suspend fun unblockUser(targetUid: String): Result<Unit> = runCatching {
+        val uid = currentUid ?: throw Exception("Not logged in")
+        db.collection("users").document(uid).update("blocked_users", FieldValue.arrayRemove(targetUid)).await()
+    }
+
+    suspend fun isUserBlocked(targetUid: String): Boolean {
+        val uid = currentUid ?: return false
+        val user = getUser(uid) ?: return false
+        return user.blocked_users.contains(targetUid)
+    }
+
+    suspend fun isBlockedBy(targetUid: String): Boolean {
+        val uid = currentUid ?: return false
+        val otherUser = getUser(targetUid) ?: return false
+        return otherUser.blocked_users.contains(uid)
+    }
+
     suspend fun muteUser(targetUid: String): Result<Unit> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
-        db.collection("users").document(uid).update("muted_users", FieldValue.arrayUnion(targetUid)).await()
+        val user = getUser(uid) ?: throw Exception("User not found")
+        val isMuted = user.muted_users.contains(targetUid)
+        val update = if (isMuted) FieldValue.arrayRemove(targetUid) else FieldValue.arrayUnion(targetUid)
+        db.collection("users").document(uid).update("muted_users", update).await()
     }
 
     suspend fun reportUser(targetUid: String, reason: String): Result<Unit> = runCatching {
@@ -337,22 +359,52 @@ class SocialRepository {
     }
 
     fun getNotificationsFlow(): Flow<List<Notification>> = callbackFlow {
-        val uid = currentUid ?: run { trySend(emptyList()); close(); return@callbackFlow }
-        val listener = db.collection("notifications")
-            .whereEqualTo("receiverId", uid)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
-            .limit(50)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Log.e("SocialRepository", "Notification listener error", error)
-                    return@addSnapshotListener
-                }
-                if (snapshot != null) {
-                    val notifications = snapshot.toObjects(Notification::class.java)
-                    trySend(notifications)
+        var listener: ListenerRegistration? = null
+        val auth = FirebaseAuth.getInstance()
+        val uid = currentUid
+        if (uid == null) {
+            // Wait for auth state to provide UID
+            val authListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+                val newUid = firebaseAuth.currentUser?.uid
+                if (newUid != null && listener == null) {
+                    listener = db.collection("notifications")
+                        .whereEqualTo("receiverId", newUid)
+                        .limit(50)
+                        .addSnapshotListener { snapshot, error ->
+                            if (error != null) {
+                                Log.e("SocialRepository", "Notification listener error", error)
+                                return@addSnapshotListener
+                            }
+                            snapshot?.let {
+                                val notifications = it.toObjects(Notification::class.java)
+                                    .sortedByDescending { it.createdAt }
+                                trySend(notifications).isSuccess
+                            }
+                        }
                 }
             }
-        awaitClose { listener.remove() }
+            auth.addAuthStateListener(authListener)
+            awaitClose {
+                listener?.remove()
+                auth.removeAuthStateListener(authListener)
+            }
+        } else {
+            listener = db.collection("notifications")
+                .whereEqualTo("receiverId", uid)
+                .limit(50)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        Log.e("SocialRepository", "Notification listener error", error)
+                        return@addSnapshotListener
+                    }
+                    snapshot?.let {
+                        val notifications = it.toObjects(Notification::class.java)
+                            .sortedByDescending { it.createdAt }
+                        trySend(notifications).isSuccess
+                    }
+                }
+            awaitClose { listener?.remove() }
+        }
     }
 
     suspend fun markNotificationAsSeen(notificationId: String): Result<Unit> = runCatching {
@@ -372,19 +424,34 @@ class SocialRepository {
     }
 
     // --- Feed & Explore ---
-    suspend fun getFeed(limit: Long = 20): Result<List<Post>> = runCatching {
-        db.collection("posts").orderBy("created_at", Query.Direction.DESCENDING).limit(limit).get().await().toObjects(Post::class.java)
+    suspend fun getFeed(limit: Long = 20, lastVisibleTimestamp: Timestamp? = null): Result<List<Post>> = runCatching {
+        val uid = currentUid
+        var query = db.collection("posts").orderBy("created_at", Query.Direction.DESCENDING)
+        if (lastVisibleTimestamp != null) {
+            query = query.startAfter(lastVisibleTimestamp)
+        }
+        val posts = query.limit(limit * 2).get().await().toObjects(Post::class.java)
+        posts.filter { it.status == "approved" || it.user_id == uid }.take(limit.toInt())
     }
 
     suspend fun getUserPosts(uid: String): Result<List<Post>> = runCatching {
-        db.collection("posts").whereEqualTo("user_id", uid).get().await().toObjects(Post::class.java).sortedByDescending { it.created_at }
+        val viewerUid = currentUid
+        db.collection("posts")
+            .whereEqualTo("user_id", uid)
+            .get()
+            .await()
+            .toObjects(Post::class.java)
+            .filter { it.status == "approved" || it.user_id == viewerUid }
+            .sortedByDescending { it.created_at }
     }
 
     suspend fun getPostsByTag(tag: String): Result<List<Post>> = runCatching {
+        val uid = currentUid
         db.collection("posts")
             .whereArrayContains("tags", tag)
             .get().await()
             .toObjects(Post::class.java)
+            .filter { it.status == "approved" || it.user_id == uid }
             .sortedByDescending { it.created_at }
     }
 
@@ -416,5 +483,102 @@ class SocialRepository {
     suspend fun updatePrivateStatus(isPrivate: Boolean): Result<Unit> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
         db.collection("users").document(uid).update("is_private", isPrivate).await()
+    }
+
+    suspend fun deletePost(postId: String): Result<Unit> = runCatching {
+        db.collection("posts").document(postId).delete().await()
+    }
+
+    suspend fun updatePostVisibility(postId: String, isPrivate: Boolean): Result<Unit> = runCatching {
+        db.collection("posts").document(postId).update("is_private", isPrivate).await()
+    }
+
+    suspend fun updatePostCommentsDisabled(postId: String, commentsDisabled: Boolean): Result<Unit> = runCatching {
+        db.collection("posts").document(postId).update("comments_disabled", commentsDisabled).await()
+    }
+
+    // --- Group Logic ---
+    suspend fun getGroups(): Result<List<Group>> = runCatching {
+        val snapshot = db.collection("groups").get().await()
+        if (snapshot.isEmpty) {
+            val defaults = listOf(
+                Group("1", "Bodybuilders Club", "Dành cho gymer thích tăng cơ, giảm mỡ và siết cơ chuyên nghiệp.", "Bodybuilding", "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=500", 1200, 45, emptyList()),
+                Group("2", "Powerlifting Vietnam", "Nơi tập hợp những tín đồ đam mê Bench, Squat, Deadlift cực nặng.", "Powerlifting", "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=500", 850, 32, emptyList()),
+                Group("3", "Yoga & Mindfulness", "Tìm lại sự cân bằng, linh hoạt và thư thái sau những giờ tập tạ căng thẳng.", "Yoga", "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=500", 940, 20, emptyList()),
+                Group("4", "Calisthenics & Street Workout", "Chinh phục các động tác như Muscle up, Planche, Front lever.", "Calisthenics", "https://images.unsplash.com/photo-1598971639058-fab3c3109a00?w=500", 620, 15, emptyList())
+            )
+            for (g in defaults) {
+                db.collection("groups").document(g.id).set(g).await()
+            }
+            defaults
+        } else {
+            snapshot.toObjects(Group::class.java)
+        }
+    }
+
+    suspend fun getGroupDetail(groupId: String): Result<Group> = runCatching {
+        db.collection("groups").document(groupId).get().await().toObject(Group::class.java)
+            ?: throw Exception("Group not found")
+    }
+
+    suspend fun joinGroup(groupId: String): Result<Unit> = runCatching {
+        val uid = currentUid ?: throw Exception("Not logged in")
+        val groupRef = db.collection("groups").document(groupId)
+        db.runTransaction { transaction ->
+            val snapshot = transaction.get(groupRef)
+            val group = snapshot.toObject(Group::class.java) ?: return@runTransaction
+            val currentMemberIds = group.memberIds.toMutableList()
+            if (!currentMemberIds.contains(uid)) {
+                currentMemberIds.add(uid)
+                transaction.update(groupRef, "memberIds", currentMemberIds)
+                transaction.update(groupRef, "memberCount", group.memberCount + 1)
+            }
+        }.await()
+    }
+
+    suspend fun leaveGroup(groupId: String): Result<Unit> = runCatching {
+        val uid = currentUid ?: throw Exception("Not logged in")
+        val groupRef = db.collection("groups").document(groupId)
+        db.runTransaction { transaction ->
+            val snapshot = transaction.get(groupRef)
+            val group = snapshot.toObject(Group::class.java) ?: return@runTransaction
+            val currentMemberIds = group.memberIds.toMutableList()
+            if (currentMemberIds.contains(uid)) {
+                currentMemberIds.remove(uid)
+                transaction.update(groupRef, "memberIds", currentMemberIds)
+                transaction.update(groupRef, "memberCount", (group.memberCount - 1).coerceAtLeast(0))
+            }
+        }.await()
+    }
+
+    suspend fun getGroupPosts(groupId: String): Result<List<Post>> = runCatching {
+        val uid = currentUid
+        db.collection("posts")
+            .whereEqualTo("group_id", groupId)
+            .get()
+            .await()
+            .toObjects(Post::class.java)
+            .filter { it.status == "approved" || it.user_id == uid }
+            .sortedByDescending { it.created_at }
+    }
+
+    suspend fun createGroupPost(groupId: String, content: String, imageUrl: String = ""): Result<Unit> = runCatching {
+        val uid = currentUid ?: throw Exception("Not logged in")
+        val docRef = db.collection("posts").document()
+        val post = Post(
+            id = docRef.id,
+            user_id = uid,
+            content = content,
+            image_url = imageUrl,
+            created_at = Timestamp.now(),
+            group_id = groupId
+        )
+        docRef.set(post).await()
+        
+        val groupRef = db.collection("groups").document(groupId)
+        db.runTransaction { transaction ->
+            val group = transaction.get(groupRef).toObject(Group::class.java) ?: return@runTransaction
+            transaction.update(groupRef, "postCount", group.postCount + 1)
+        }.await()
     }
 }

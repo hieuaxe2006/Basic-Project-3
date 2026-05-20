@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Notifications
@@ -22,6 +23,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.socialapp.data.model.Notification
+import com.socialapp.ui.home.shimmerBrush
+import com.socialapp.utils.t
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -38,7 +41,7 @@ fun NotificationScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Thông báo", fontWeight = FontWeight.Bold) },
+                title = { Text(t("notifications"), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -47,7 +50,7 @@ fun NotificationScreen(
                 actions = {
                     if (state.notifications.isNotEmpty()) {
                         TextButton(onClick = { viewModel.markAllAsSeen() }) {
-                            Text("Đánh dấu tất cả đã đọc")
+                            Text(t("mark_all_read"))
                         }
                     }
                 }
@@ -55,21 +58,23 @@ fun NotificationScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Hiển thị vòng quay loading khi chưa có dữ liệu và đang tải lần đầu
             if (state.isLoading && state.notifications.isEmpty() && !state.hasLoadedOnce) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                val brush = shimmerBrush()
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(6) {
+                        NotificationShimmerItem(brush)
+                    }
+                }
             } else if (state.notifications.isEmpty() && state.hasLoadedOnce) {
-                // Chỉ hiển thị "Chưa có thông báo" sau khi đã tải xong ít nhất 1 lần và thực sự trống
                 Column(
                     modifier = Modifier.align(Alignment.Center),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(Icons.Default.Notifications, null, modifier = Modifier.size(64.dp), tint = Color.Gray)
                     Spacer(Modifier.height(16.dp))
-                    Text("Chưa có thông báo nào", color = Color.Gray)
+                    Text(t("no_notifications"), color = Color.Gray)
                 }
             } else {
-                // Hiển thị danh sách thông báo
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(state.notifications, key = { it.id }) { notification ->
                         NotificationItem(
@@ -77,7 +82,7 @@ fun NotificationScreen(
                             onClick = {
                                 viewModel.markAsSeen(notification.id)
                                 when (notification.type) {
-                                    "like", "comment" -> if (notification.postId.isNotBlank()) onNavigateToPost(notification.postId)
+                                    "like", "comment", "post_approved" -> if (notification.postId.isNotBlank()) onNavigateToPost(notification.postId)
                                     "follow", "friend_request", "friend_accept" -> onNavigateToProfile(notification.senderId)
                                 }
                             }
@@ -143,6 +148,39 @@ fun NotificationItem(notification: Notification, onClick: () -> Unit) {
                 modifier = Modifier
                     .size(8.dp)
                     .background(MaterialTheme.colorScheme.primary, CircleShape)
+            )
+        }
+    }
+}
+
+@Composable
+fun NotificationShimmerItem(brush: androidx.compose.ui.graphics.Brush) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(50.dp)
+                .clip(CircleShape)
+                .background(brush)
+        )
+        Spacer(Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .height(16.dp)
+                    .background(brush, RoundedCornerShape(4.dp))
+            )
+            Spacer(Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.3f)
+                    .height(12.dp)
+                    .background(brush, RoundedCornerShape(4.dp))
             )
         }
     }

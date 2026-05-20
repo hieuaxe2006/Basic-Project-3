@@ -14,5 +14,10 @@ data class Post(
     val like_count: Int = 0,
     val comment_count: Int = 0,
     val tags: List<String> = emptyList(),
-    val background_color: String = ""
+    val background_color: String = "",
+    val is_private: Boolean = false,
+    val comments_disabled: Boolean = false,
+    val group_id: String = "",
+    val status: String = "approved",
+    val moderated_at: Timestamp? = null
 )

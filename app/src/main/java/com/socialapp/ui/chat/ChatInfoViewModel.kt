@@ -15,13 +15,28 @@ class ChatInfoViewModel : ViewModel() {
     var isBlocked by mutableStateOf(false)
     var message by mutableStateOf<String?>(null)
 
-    fun blockUser(targetUid: String) {
+    fun checkBlockStatus(targetUid: String) {
         viewModelScope.launch {
-            repo.blockUser(targetUid).onSuccess {
-                isBlocked = true
-                message = "Đã chặn người dùng này"
-            }.onFailure {
-                message = "Lỗi: ${it.message}"
+            isBlocked = repo.isUserBlocked(targetUid)
+        }
+    }
+
+    fun toggleBlockUser(targetUid: String) {
+        viewModelScope.launch {
+            if (isBlocked) {
+                repo.unblockUser(targetUid).onSuccess {
+                    isBlocked = false
+                    message = "Đã bỏ chặn người dùng"
+                }.onFailure {
+                    message = "Lỗi: ${it.message}"
+                }
+            } else {
+                repo.blockUser(targetUid).onSuccess {
+                    isBlocked = true
+                    message = "Đã chặn người dùng"
+                }.onFailure {
+                    message = "Lỗi: ${it.message}"
+                }
             }
         }
     }
@@ -29,8 +44,10 @@ class ChatInfoViewModel : ViewModel() {
     fun muteUser(targetUid: String) {
         viewModelScope.launch {
             repo.muteUser(targetUid).onSuccess {
-                isMuted = true
-                message = "Đã tắt thông báo"
+                // SocialRepository.muteUser handles toggle now
+                // We should ideally fetch the state back or toggle it here
+                isMuted = !isMuted
+                message = if (isMuted) "Đã tắt thông báo" else "Đã bật thông báo"
             }.onFailure {
                 message = "Lỗi: ${it.message}"
             }
