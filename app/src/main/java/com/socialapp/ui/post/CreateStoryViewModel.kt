@@ -20,26 +20,15 @@ data class CreateStoryState(
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
     val error: String? = null,
-    val selectedUri: Uri? = null,
-    val storyType: String = "image", // "image", "text"
     val textContent: String = "",
     val backgroundColor: String = "#1877F2"
 )
 
 class CreateStoryViewModel : ViewModel() {
     private val repo = SocialRepository()
-    private val storage = FirebaseStorage.getInstance()
     
     var state by mutableStateOf(CreateStoryState())
         private set
-
-    fun onImageSelected(uri: Uri) {
-        state = state.copy(selectedUri = uri, storyType = "image")
-    }
-
-    fun onTextTypeSelected() {
-        state = state.copy(storyType = "text", selectedUri = null)
-    }
 
     fun updateText(text: String) {
         state = state.copy(textContent = text)
@@ -54,15 +43,6 @@ class CreateStoryViewModel : ViewModel() {
             state = state.copy(isLoading = true, error = null)
             try {
                 val uid = repo.currentUid ?: throw Exception("Not logged in")
-                var finalImageUrl = ""
-                
-                if (state.storyType == "image" && state.selectedUri != null) {
-                    val fileName = "stories/${UUID.randomUUID()}.jpg"
-                    val storageRef = storage.reference.child(fileName)
-                    storageRef.putFile(state.selectedUri!!).await()
-                    finalImageUrl = storageRef.downloadUrl.await().toString()
-                }
-
                 val calendar = Calendar.getInstance()
                 val createdAt = Timestamp.now()
                 calendar.time = createdAt.toDate()
@@ -71,16 +51,14 @@ class CreateStoryViewModel : ViewModel() {
 
                 val story = Story(
                     userId = uid,
-                    imageUrl = finalImageUrl,
+                    imageUrl = "",
                     text = state.textContent,
                     backgroundColor = state.backgroundColor,
-                    type = state.storyType,
+                    type = "text",
                     createdAt = createdAt,
                     expiresAt = expiresAt
                 )
 
-                // We need a way to save this Story. I'll update SocialRepository to accept a Story object.
-                // For now, I'll assume we update createStory in Repo.
                 repo.saveStory(story).onSuccess {
                     state = state.copy(isLoading = false, isSuccess = true)
                 }.onFailure {

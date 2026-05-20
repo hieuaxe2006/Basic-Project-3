@@ -39,6 +39,37 @@ import coil.compose.AsyncImage
 import com.socialapp.data.model.Post
 import com.socialapp.data.model.User
 
+import com.socialapp.utils.t
+import com.socialapp.ui.home.shimmerBrush
+
+@Composable
+fun ProfileShimmerSkeleton(brush: androidx.compose.ui.graphics.Brush) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .background(brush, shape = CircleShape)
+        )
+        Spacer(Modifier.height(16.dp))
+        Box(modifier = Modifier.height(24.dp).fillMaxWidth(0.4f).background(brush, shape = RoundedCornerShape(4.dp)))
+        Spacer(Modifier.height(8.dp))
+        Box(modifier = Modifier.height(16.dp).fillMaxWidth(0.6f).background(brush, shape = RoundedCornerShape(4.dp)))
+        Spacer(Modifier.height(32.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            repeat(3) {
+                Box(modifier = Modifier.size(60.dp).background(brush, shape = RoundedCornerShape(8.dp)))
+            }
+        }
+        Spacer(Modifier.height(32.dp))
+        Box(modifier = Modifier.fillMaxWidth().height(200.dp).background(brush, shape = RoundedCornerShape(12.dp)))
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -72,7 +103,7 @@ fun ProfileScreen(
             TopAppBar(
                 title = {
                     Text(
-                        state.user?.username ?: "Trang cá nhân",
+                        state.user?.username ?: t("profile"),
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp
                     )
@@ -109,8 +140,8 @@ fun ProfileScreen(
     ) { padding ->
         when {
             state.isLoading -> {
-                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                Box(Modifier.fillMaxSize().padding(padding)) {
+                    ProfileShimmerSkeleton(shimmerBrush())
                 }
             }
             state.error != null -> {
@@ -385,6 +416,8 @@ private fun ProfileContent(
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { viewModel.uploadAvatar(it, context) }
     }
+    
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -595,18 +628,17 @@ private fun ProfileContent(
         }
 
         item {
-            var selectedTabIndex by remember { mutableIntStateOf(0) }
             TabRow(selectedTabIndex = selectedTabIndex) {
                 Tab(
                     selected = selectedTabIndex == 0,
                     onClick = { selectedTabIndex = 0 },
-                    text = { Text("Bài viết", fontWeight = FontWeight.Bold) }
+                    text = { Text(t("posts"), fontWeight = FontWeight.Bold) }
                 )
                 if (isOwnProfile) {
                     Tab(
                         selected = selectedTabIndex == 1,
                         onClick = { selectedTabIndex = 1 },
-                        text = { Text("Đã lưu", fontWeight = FontWeight.Bold) }
+                        text = { Text(t("saved"), fontWeight = FontWeight.Bold) }
                     )
                 }
             }
@@ -618,14 +650,29 @@ private fun ProfileContent(
             }
         }
 
-        val posts = if (viewModel.state.postedPosts.isNotEmpty()) viewModel.state.postedPosts else emptyList()
+        val posts = if (selectedTabIndex == 0) viewModel.state.postedPosts else viewModel.state.savedPosts
 
-        items(posts) { post ->
-            PostThumbnail(
-                post = post,
-                onShareClick = { onShareClick(post) }
-            )
-            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+        if (!viewModel.state.isPostsLoading && posts.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        if (selectedTabIndex == 0) t("no_posts") else t("no_saved_posts"),
+                        color = Color.Gray,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+        } else {
+            items(posts) { post ->
+                PostThumbnail(
+                    post = post,
+                    onShareClick = { onShareClick(post) }
+                )
+                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+            }
         }
     }
 }

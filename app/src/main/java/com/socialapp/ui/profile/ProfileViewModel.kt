@@ -1,13 +1,16 @@
 package com.socialapp.ui.profile
 
+import android.app.Application
 import android.content.Context
 import android.net.Uri
 import android.util.Base64
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.socialapp.data.local.LocalCacheManager
+import com.socialapp.data.local.CachedProfileData
 import com.socialapp.data.model.Post
 import com.socialapp.data.model.User
 import com.socialapp.data.remote.ImgBBApi
@@ -45,10 +48,11 @@ data class ProfileState(
     val isGeneratingWorkout: Boolean = false
 )
 
-class ProfileViewModel : ViewModel() {
+class ProfileViewModel(application: Application) : AndroidViewModel(application) {
     private val repo = UserRepository()
     private val socialRepo = SocialRepository()
     private val chatRepo = ChatRepository()
+    private val cacheManager = LocalCacheManager(application)
 
     var state by mutableStateOf(ProfileState())
         private set
@@ -62,7 +66,19 @@ class ProfileViewModel : ViewModel() {
     fun loadProfile(uid: String? = null) {
         val targetUid = uid ?: repo.currentUid ?: return
         profileJob?.cancel()
-        state = state.copy(isLoading = true, error = null)
+        
+        // Load cache first
+        val cached = cacheManager.loadProfileCache(targetUid)
+        if (cached != null) {
+            state = state.copy(
+                user = cached.user,
+                postedPosts = cached.postedPosts,
+                savedPosts = cached.savedPosts
+            )
+        } else {
+            state = state.copy(isLoading = true, error = null)
+        }
+
         profileJob = viewModelScope.launch {
             repo.getUserSnapshot(targetUid)
                 .catch { e -> state = state.copy(isLoading = false, error = e.message) }
@@ -113,19 +129,32 @@ class ProfileViewModel : ViewModel() {
         }
     }
 
+    private fun saveToCache() {
+        val user = state.user ?: return
+        cacheManager.saveProfileCache(user.id, CachedProfileData(
+            user = user,
+            postedPosts = state.postedPosts,
+            savedPosts = state.savedPosts
+        ))
+    }
+
     fun loadPostedPosts(uid: String) {
         viewModelScope.launch {
             state = state.copy(isPostsLoading = true)
             socialRepo.getUserPosts(uid)
-                .onSuccess { state = state.copy(isPostsLoading = false, postedPosts = it) }
-                . onFailure { state = state.copy(isPostsLoading = false) }
+                .onSuccess { 
+                    state = state.copy(isPostsLoading = false, postedPosts = it)
+                    saveToCache()
+                }
+                .onFailure { state = state.copy(isPostsLoading = false) }
         }
     }
 
     fun observeSavedPosts() {
         viewModelScope.launch {
             socialRepo.getSavedPostIdsFlow().collect {
-                if (isOwnProfile) {
+                val currentUid = repo.currentUid
+                if (currentUid != null && (state.user == null || state.user?.id == currentUid)) {
                     loadSavedPosts()
                 }
             }
@@ -135,7 +164,10 @@ class ProfileViewModel : ViewModel() {
     fun loadSavedPosts() {
         viewModelScope.launch {
             socialRepo.getSavedPosts()
-                .onSuccess { state = state.copy(isPostsLoading = false, savedPosts = it) }
+                .onSuccess { 
+                    state = state.copy(isPostsLoading = false, savedPosts = it)
+                    saveToCache()
+                }
                 .onFailure { state = state.copy(isPostsLoading = false) }
         }
     }

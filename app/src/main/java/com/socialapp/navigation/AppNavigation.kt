@@ -24,7 +24,8 @@ import com.socialapp.ui.comment.*
 import com.socialapp.ui.home.HomeScreen
 import com.socialapp.ui.post.*
 import com.socialapp.ui.profile.*
-import com.socialapp.ui.explore.*
+import com.socialapp.ui.explore.CategoryFeedScreen
+import com.socialapp.ui.group.*
 import com.socialapp.ui.search.SearchScreen
 import com.socialapp.ui.settings.SettingsScreen
 import com.socialapp.ui.admin.AdminDashboardScreen
@@ -103,7 +104,7 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
                 onNavigateToCreatePost = { navController.navigate(Screen.CreatePost.route) },
                 onNavigateToComments = { postId -> navController.navigate(Screen.Comments.createRoute(postId)) },
                 onNavigateToChat = { navController.navigate(Screen.ChatList.route) },
-                onNavigateToExplore = { navController.navigate(Screen.Explore.route) },
+                onNavigateToExplore = { navController.navigate(Screen.Group.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 onNavigateToSearch = { query -> navController.navigate(Screen.Search.createRoute(query)) },
                 onNavigateToAdmin = {},
@@ -213,12 +214,29 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
             )
         }
 
-        // --- Màn hình Explore (Khám phá) ---
-        composable(Screen.Explore.route) {
-            ExploreScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToCategory = { tag ->
-                    navController.navigate(Screen.CategoryFeed.createRoute(tag))
+        // --- Màn hình Group (Nhóm) ---
+        composable(Screen.Group.route) {
+            GroupScreen(
+                onNavigateToGroupDetail = { groupId ->
+                    navController.navigate(Screen.GroupDetail.createRoute(groupId))
+                }
+            )
+        }
+
+        // --- Màn hình Chi tiết Group ---
+        composable(
+            route = Screen.GroupDetail.route,
+            arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
+            GroupDetailScreen(
+                groupId = groupId,
+                onBack = { navController.popBackStack() },
+                onNavigateToComments = { postId ->
+                    navController.navigate(Screen.Comments.createRoute(postId))
+                },
+                onNavigateToProfile = { uid ->
+                    navController.navigate(Screen.Profile.createRoute(uid))
                 }
             )
         }

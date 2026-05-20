@@ -3,8 +3,9 @@ package com.socialapp.ui.home
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.*
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.BorderStroke
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -48,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.socialapp.data.model.Post
+import com.socialapp.utils.t
 import com.socialapp.data.model.Story
 import com.socialapp.data.model.User
 import com.socialapp.ui.chat.UserAvatar
@@ -91,38 +94,117 @@ fun HomeScreen(
     }
 
     var topBarHeightPx by remember { mutableStateOf(0) }
-    var bottomBarHeightPx by remember { mutableStateOf(0) }
     val density = LocalDensity.current
     val topBarHeightDp = remember(topBarHeightPx) { with(density) { topBarHeightPx.toDp() } }
-    val bottomBarHeightDp = remember(bottomBarHeightPx) { with(density) { bottomBarHeightPx.toDp() } }
 
     val topBarTranslationY by animateFloatAsState(
         targetValue = if (barsVisible) 0f else -topBarHeightPx.toFloat(),
         label = "TopBarTranslation"
     )
-    val bottomBarTranslationY by animateFloatAsState(
-        targetValue = if (barsVisible) 0f else bottomBarHeightPx.toFloat(),
-        label = "BottomBarTranslation"
-    )
+
+    val listState = rememberLazyListState()
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val totalItemsNumber = layoutInfo.totalItemsCount
+            val lastVisibleItemIndex = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
+            
+            lastVisibleItemIndex > 0 && lastVisibleItemIndex >= totalItemsNumber - 3
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) {
+            feedViewModel.loadNextPage()
+        }
+    }
 
     Scaffold(
-        modifier = Modifier.nestedScroll(nestedScrollConnection)
+        modifier = Modifier.nestedScroll(nestedScrollConnection),
+        bottomBar = {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp
+            ) {
+                NavigationBarItem(
+                    icon = { Icon(imageVector = Icons.Default.Home, contentDescription = null) },
+                    label = { Text("Home") },
+                    selected = true,
+                    onClick = { feedViewModel.loadFeed(isRefresh = true) }
+                )
+                NavigationBarItem(
+                    icon = { Icon(imageVector = Icons.Default.Group, contentDescription = null) },
+                    label = { Text(t("groups")) },
+                    selected = false,
+                    onClick = onNavigateToExplore
+                )
+                NavigationBarItem(
+                    icon = { Icon(imageVector = Icons.Default.AddCircle, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp), contentDescription = null) },
+                    label = { Text("Post") },
+                    selected = false,
+                    onClick = onNavigateToCreatePost
+                )
+                NavigationBarItem(
+                    icon = {
+                        BadgedBox(
+                            badge = {
+                                if (state.unreadChatCount > 0) {
+                                    Badge(containerColor = Color.Red) {
+                                        Text(state.unreadChatCount.toString(), color = Color.White)
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(imageVector = Icons.Default.Chat, contentDescription = "Chat")
+                        }
+                    },
+                    label = { Text("Chat") },
+                    selected = false,
+                    onClick = onNavigateToChat
+                )
+                NavigationBarItem(
+                    icon = { Icon(imageVector = Icons.Default.Person, contentDescription = null) },
+                    label = { Text("Profile") },
+                    selected = false,
+                    onClick = { onNavigateToProfile(null) }
+                )
+            }
+        }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (state.isLoading && state.posts.isEmpty()) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                val brush = shimmerBrush()
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(top = topBarHeightDp),
+                    userScrollEnabled = false
+                ) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(brush)
+                        )
+                    }
+                    item { StorySkeletonSection(brush = brush) }
+                    items(3) { PostSkeletonItem(brush = brush) }
+                }
             } else {
                 PullToRefreshBox(
                     isRefreshing = state.isLoading,
                     onRefresh = {
-                        feedViewModel.loadFeed()
+                        feedViewModel.loadFeed(isRefresh = true)
                         feedViewModel.loadStories()
                     },
                     modifier = Modifier.fillMaxSize()
                 ) {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(top = topBarHeightDp, bottom = bottomBarHeightDp)
+                        contentPadding = PaddingValues(top = topBarHeightDp)
                     ) {
                         item { QuickCreatePostBar(onNavigateToProfile, onNavigateToCreatePost, state.currentUser) }
                         item { StorySection(state.stories, state.currentUser, state.userMap, onCreateStory = onNavigateToCreateStory, onStoryClick = onNavigateToViewStory) }
@@ -173,7 +255,10 @@ fun HomeScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .clickable {
-                                    feedViewModel.loadFeed()
+                                    scope.launch {
+                                        listState.animateScrollToItem(0)
+                                    }
+                                    feedViewModel.loadFeed(isRefresh = true)
                                     feedViewModel.loadStories()
                                 }
                         )
@@ -191,7 +276,14 @@ fun HomeScreen(
                                 Icon(imageVector = Icons.Outlined.Notifications, contentDescription = "Notifications", modifier = Modifier.size(20.dp))
                             }
                         }
-                        Spacer(Modifier.width(12.dp))
+                        Spacer(Modifier.width(8.dp))
+                        IconButton(
+                            onClick = onNavigateToSettings,
+                            modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                        ) {
+                            Icon(imageVector = Icons.Outlined.Settings, contentDescription = "Settings", modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(Modifier.width(8.dp))
                         IconButton(
                             onClick = { onNavigateToSearch("") },
                             modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
@@ -256,57 +348,7 @@ fun HomeScreen(
                 }
             }
 
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 8.dp,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .onSizeChanged { bottomBarHeightPx = it.height }
-                    .graphicsLayer { translationY = bottomBarTranslationY }
-            ) {
-                NavigationBarItem(
-                    icon = { Icon(imageVector = Icons.Default.Home, contentDescription = null) },
-                    label = { Text("Home") },
-                    selected = true,
-                    onClick = { feedViewModel.loadFeed() }
-                )
-                NavigationBarItem(
-                    icon = { Icon(imageVector = Icons.Default.Explore, contentDescription = null) },
-                    label = { Text("Explore") },
-                    selected = false,
-                    onClick = onNavigateToExplore
-                )
-                NavigationBarItem(
-                    icon = { Icon(imageVector = Icons.Default.AddCircle, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp), contentDescription = null) },
-                    label = { Text("Post") },
-                    selected = false,
-                    onClick = onNavigateToCreatePost
-                )
-                NavigationBarItem(
-                    icon = {
-                        BadgedBox(
-                            badge = {
-                                if (state.unreadChatCount > 0) {
-                                    Badge(containerColor = Color.Red) {
-                                        Text(state.unreadChatCount.toString(), color = Color.White)
-                                    }
-                                }
-                            }
-                        ) {
-                            Icon(imageVector = Icons.Default.Chat, contentDescription = "Chat")
-                        }
-                    },
-                    label = { Text("Chat") },
-                    selected = false,
-                    onClick = onNavigateToChat
-                )
-                NavigationBarItem(
-                    icon = { Icon(imageVector = Icons.Default.Person, contentDescription = null) },
-                    label = { Text("Profile") },
-                    selected = false,
-                    onClick = { onNavigateToProfile(null) }
-                )
-            }
+
 
             if (showShareSheet) {
                 ModalBottomSheet(onDismissRequest = { showShareSheet = false; feedViewModel.clearShareState() }, sheetState = sheetState) {
@@ -325,6 +367,145 @@ fun HomeScreen(
 }
 
 @Composable
+fun shimmerBrush(showShimmer: Boolean = true, targetValue: Float = 1000f): Brush {
+    return if (showShimmer) {
+        val shimmerColors = listOf(
+            Color.LightGray.copy(alpha = 0.6f),
+            Color.LightGray.copy(alpha = 0.2f),
+            Color.LightGray.copy(alpha = 0.6f),
+        )
+        val transition = rememberInfiniteTransition(label = "shimmer")
+        val translateAnimation = transition.animateFloat(
+            initialValue = 0f,
+            targetValue = targetValue,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "shimmerTranslate"
+        )
+        Brush.linearGradient(
+            colors = shimmerColors,
+            start = Offset.Zero,
+            end = Offset(x = translateAnimation.value, y = translateAnimation.value)
+        )
+    } else {
+        Brush.linearGradient(
+            colors = listOf(Color.Transparent, Color.Transparent),
+            start = Offset.Zero,
+            end = Offset.Zero
+        )
+    }
+}
+
+@Composable
+fun StorySkeletonSection(brush: Brush) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        userScrollEnabled = false
+    ) {
+        items(5) {
+            Box(
+                modifier = Modifier
+                    .size(width = 110.dp, height = 190.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(brush)
+            )
+        }
+    }
+}
+
+@Composable
+fun PostSkeletonItem(brush: Brush) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp, horizontal = 12.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(brush)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Box(
+                        modifier = Modifier
+                            .size(width = 120.dp, height = 16.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(brush)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(width = 80.dp, height = 12.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(brush)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(20.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(brush)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.7f)
+                    .height(20.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(brush)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(brush)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 60.dp, height = 24.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(brush)
+                )
+                Box(
+                    modifier = Modifier
+                        .size(width = 60.dp, height = 24.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(brush)
+                )
+                Box(
+                    modifier = Modifier
+                        .size(width = 60.dp, height = 24.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(brush)
+                )
+            }
+        }
+    }
+}
+
+
+@Composable
 fun StorySection(stories: List<Story>, currentUser: User?, userMap: Map<String, User>, onCreateStory: () -> Unit, onStoryClick: (String) -> Unit) {
     LazyRow(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -333,7 +514,8 @@ fun StorySection(stories: List<Story>, currentUser: User?, userMap: Map<String, 
     ) {
         item { CreateStoryItem(currentUser, onCreateStory) }
         items(stories) { story ->
-            StoryItem(story, userMap[story.userId], onStoryClick)
+            val storyUser = userMap[story.userId] ?: if (story.userId == currentUser?.id) currentUser else null
+            StoryItem(story, storyUser, onStoryClick)
         }
     }
 }

@@ -12,6 +12,7 @@ import com.socialapp.data.model.Notification
 import com.socialapp.data.model.Post
 import com.socialapp.data.model.Story
 import com.socialapp.data.model.User
+import com.socialapp.data.model.Group
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -351,8 +352,12 @@ class SocialRepository {
     }
 
     // --- Feed & Explore ---
-    suspend fun getFeed(limit: Long = 20): Result<List<Post>> = runCatching {
-        db.collection("posts").orderBy("created_at", Query.Direction.DESCENDING).limit(limit).get().await().toObjects(Post::class.java)
+    suspend fun getFeed(limit: Long = 20, lastVisibleTimestamp: Timestamp? = null): Result<List<Post>> = runCatching {
+        var query = db.collection("posts").orderBy("created_at", Query.Direction.DESCENDING)
+        if (lastVisibleTimestamp != null) {
+            query = query.startAfter(lastVisibleTimestamp)
+        }
+        query.limit(limit).get().await().toObjects(Post::class.java)
     }
 
     suspend fun getUserPosts(uid: String): Result<List<Post>> = runCatching {
@@ -408,5 +413,88 @@ class SocialRepository {
 
     suspend fun updatePostCommentsDisabled(postId: String, commentsDisabled: Boolean): Result<Unit> = runCatching {
         db.collection("posts").document(postId).update("comments_disabled", commentsDisabled).await()
+    }
+
+    // --- Group Logic ---
+    suspend fun getGroups(): Result<List<Group>> = runCatching {
+        val snapshot = db.collection("groups").get().await()
+        if (snapshot.isEmpty) {
+            val defaults = listOf(
+                Group("1", "Bodybuilders Club", "Dành cho gymer thích tăng cơ, giảm mỡ và siết cơ chuyên nghiệp.", "Bodybuilding", "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=500", 1200, 45, emptyList()),
+                Group("2", "Powerlifting Vietnam", "Nơi tập hợp những tín đồ đam mê Bench, Squat, Deadlift cực nặng.", "Powerlifting", "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=500", 850, 32, emptyList()),
+                Group("3", "Yoga & Mindfulness", "Tìm lại sự cân bằng, linh hoạt và thư thái sau những giờ tập tạ căng thẳng.", "Yoga", "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=500", 940, 20, emptyList()),
+                Group("4", "Calisthenics & Street Workout", "Chinh phục các động tác như Muscle up, Planche, Front lever.", "Calisthenics", "https://images.unsplash.com/photo-1598971639058-fab3c3109a00?w=500", 620, 15, emptyList())
+            )
+            for (g in defaults) {
+                db.collection("groups").document(g.id).set(g).await()
+            }
+            defaults
+        } else {
+            snapshot.toObjects(Group::class.java)
+        }
+    }
+
+    suspend fun getGroupDetail(groupId: String): Result<Group> = runCatching {
+        db.collection("groups").document(groupId).get().await().toObject(Group::class.java)
+            ?: throw Exception("Group not found")
+    }
+
+    suspend fun joinGroup(groupId: String): Result<Unit> = runCatching {
+        val uid = currentUid ?: throw Exception("Not logged in")
+        val groupRef = db.collection("groups").document(groupId)
+        db.runTransaction { transaction ->
+            val snapshot = transaction.get(groupRef)
+            val group = snapshot.toObject(Group::class.java) ?: return@runTransaction
+            val currentMemberIds = group.memberIds.toMutableList()
+            if (!currentMemberIds.contains(uid)) {
+                currentMemberIds.add(uid)
+                transaction.update(groupRef, "memberIds", currentMemberIds)
+                transaction.update(groupRef, "memberCount", group.memberCount + 1)
+            }
+        }.await()
+    }
+
+    suspend fun leaveGroup(groupId: String): Result<Unit> = runCatching {
+        val uid = currentUid ?: throw Exception("Not logged in")
+        val groupRef = db.collection("groups").document(groupId)
+        db.runTransaction { transaction ->
+            val snapshot = transaction.get(groupRef)
+            val group = snapshot.toObject(Group::class.java) ?: return@runTransaction
+            val currentMemberIds = group.memberIds.toMutableList()
+            if (currentMemberIds.contains(uid)) {
+                currentMemberIds.remove(uid)
+                transaction.update(groupRef, "memberIds", currentMemberIds)
+                transaction.update(groupRef, "memberCount", (group.memberCount - 1).coerceAtLeast(0))
+            }
+        }.await()
+    }
+
+    suspend fun getGroupPosts(groupId: String): Result<List<Post>> = runCatching {
+        db.collection("posts")
+            .whereEqualTo("group_id", groupId)
+            .get()
+            .await()
+            .toObjects(Post::class.java)
+            .sortedByDescending { it.created_at }
+    }
+
+    suspend fun createGroupPost(groupId: String, content: String, imageUrl: String = ""): Result<Unit> = runCatching {
+        val uid = currentUid ?: throw Exception("Not logged in")
+        val docRef = db.collection("posts").document()
+        val post = Post(
+            id = docRef.id,
+            user_id = uid,
+            content = content,
+            image_url = imageUrl,
+            created_at = Timestamp.now(),
+            group_id = groupId
+        )
+        docRef.set(post).await()
+        
+        val groupRef = db.collection("groups").document(groupId)
+        db.runTransaction { transaction ->
+            val group = transaction.get(groupRef).toObject(Group::class.java) ?: return@runTransaction
+            transaction.update(groupRef, "postCount", group.postCount + 1)
+        }.await()
     }
 }

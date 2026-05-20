@@ -1,12 +1,16 @@
 package com.socialapp.ui.home
 
+import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import com.socialapp.data.local.CachedFeedData
+import com.socialapp.data.local.LocalCacheManager
 import com.socialapp.data.model.Post
 import com.socialapp.data.model.Story
 import com.socialapp.data.model.User
@@ -32,28 +36,55 @@ data class FeedState(
     val searchResults: List<User> = emptyList(),
     val isSearching: Boolean = false,
     val unreadChatCount: Int = 0,
-    val unreadNotificationCount: Int = 0
+    val unreadNotificationCount: Int = 0,
+    val isPreloading: Boolean = false,
+    val isEndReached: Boolean = false
 )
 
-class FeedViewModel : ViewModel() {
+class FeedViewModel(application: Application) : AndroidViewModel(application) {
     private val repo = SocialRepository()
     private val chatRepo = ChatRepository()
     private val db = FirebaseFirestore.getInstance()
     private var messageListener: ListenerRegistration? = null
     private var notificationListener: ListenerRegistration? = null
+    private val cacheManager = LocalCacheManager(application)
+
+    // Pagination double buffering state
+    private var lastVisibleTimestamp: Timestamp? = null
+    private var preloadedPosts: List<Post>? = null
+    private var preloadedUserMap: Map<String, User> = emptyMap()
+    private var preloadedLikedIds: Set<String> = emptySet()
+    private var preloadedLastTimestamp: Timestamp? = null
+    private var isPreloadedEndReached: Boolean = false
 
     var state by mutableStateOf(FeedState())
         private set
     val currentUid get() = repo.currentUid
 
     init {
-        loadFeed()
+        loadCachedData()
+        loadFeed(isRefresh = true)
         loadStories()
         loadCurrentUser()
         observeSavedPosts()
         observeFollowing()
         observeUnreadMessages()
         observeUnreadNotifications()
+    }
+
+    private fun loadCachedData() {
+        val cached = cacheManager.loadFeedCache()
+        if (cached != null) {
+            state = state.copy(
+                posts = cached.posts,
+                stories = cached.stories,
+                userMap = state.userMap + cached.userMap,
+                likedIds = cached.likedIds,
+                savedIds = cached.savedIds
+            )
+            // If cache loaded posts, track the last post's timestamp
+            lastVisibleTimestamp = cached.posts.lastOrNull()?.created_at
+        }
     }
 
     private fun observeUnreadMessages() {
@@ -84,14 +115,35 @@ class FeedViewModel : ViewModel() {
         val uid = currentUid ?: return
         viewModelScope.launch {
             val user = repo.getUser(uid)
-            state = state.copy(currentUser = user)
+            if (user != null) {
+                val updatedUserMap = state.userMap.toMutableMap()
+                updatedUserMap[uid] = user
+                state = state.copy(currentUser = user, userMap = updatedUserMap)
+            } else {
+                state = state.copy(currentUser = user)
+            }
         }
     }
 
-    fun loadFeed() {
+    fun loadFeed(isRefresh: Boolean = false) {
         viewModelScope.launch {
-            state = state.copy(isLoading = true, error = null)
-            repo.getFeed().onSuccess { posts ->
+            if (isRefresh) {
+                lastVisibleTimestamp = null
+                state = state.copy(isEndReached = false)
+                preloadedPosts = null
+                preloadedUserMap = emptyMap()
+                preloadedLikedIds = emptySet()
+                preloadedLastTimestamp = null
+                isPreloadedEndReached = false
+            }
+
+            if (isRefresh || state.posts.isEmpty()) {
+                state = state.copy(isLoading = true, error = null)
+            } else {
+                state = state.copy(error = null)
+            }
+
+            repo.getFeed(limit = 10, lastVisibleTimestamp = null).onSuccess { posts ->
                 val userIds = posts.map { it.user_id }.distinct()
                 val userMap = state.userMap.toMutableMap()
                 userIds.forEach { uid -> 
@@ -100,8 +152,133 @@ class FeedViewModel : ViewModel() {
                     }
                 }
                 val likedIds = repo.getLikedPostIds(posts.map { it.id })
-                state = state.copy(isLoading = false, posts = posts, userMap = userMap, likedIds = likedIds)
-            }.onFailure { state = state.copy(isLoading = false, error = it.message) }
+                
+                lastVisibleTimestamp = posts.lastOrNull()?.created_at
+                val isEnd = posts.size < 10
+
+                state = state.copy(
+                    isLoading = false, 
+                    posts = posts, 
+                    userMap = userMap, 
+                    likedIds = likedIds,
+                    isEndReached = isEnd
+                )
+
+                // Save to cache
+                cacheManager.saveFeedCache(
+                    CachedFeedData(
+                        posts = posts,
+                        stories = state.stories,
+                        userMap = userMap,
+                        likedIds = likedIds,
+                        savedIds = state.savedIds
+                    )
+                )
+
+                // Preload the next page immediately in the background
+                if (!isEnd) {
+                    preloadNextPage()
+                }
+            }.onFailure { 
+                state = state.copy(isLoading = false, error = it.message) 
+            }
+        }
+    }
+
+    fun preloadNextPage() {
+        if (state.isPreloading || state.isEndReached || preloadedPosts != null) return
+        val timestamp = lastVisibleTimestamp ?: return
+        
+        viewModelScope.launch {
+            state = state.copy(isPreloading = true)
+            repo.getFeed(limit = 10, lastVisibleTimestamp = timestamp).onSuccess { posts ->
+                if (posts.isNotEmpty()) {
+                    val userIds = posts.map { it.user_id }.distinct()
+                    val userMap = mutableMapOf<String, User>()
+                    userIds.forEach { uid ->
+                        repo.getUser(uid)?.let { userMap[uid] = it }
+                    }
+                    val likedIds = repo.getLikedPostIds(posts.map { it.id })
+                    
+                    preloadedPosts = posts
+                    preloadedUserMap = userMap
+                    preloadedLikedIds = likedIds
+                    preloadedLastTimestamp = posts.lastOrNull()?.created_at
+                    isPreloadedEndReached = posts.size < 10
+                } else {
+                    isPreloadedEndReached = true
+                }
+                state = state.copy(isPreloading = false)
+            }.onFailure {
+                state = state.copy(isPreloading = false)
+            }
+        }
+    }
+
+    fun loadNextPage() {
+        if (state.isLoading || state.isEndReached) return
+
+        val preloaded = preloadedPosts
+        if (preloaded != null) {
+            // Consume preload
+            val updatedPosts = state.posts + preloaded
+            val updatedUserMap = state.userMap + preloadedUserMap
+            val updatedLikedIds = state.likedIds + preloadedLikedIds
+            
+            lastVisibleTimestamp = preloadedLastTimestamp
+            val isEnd = isPreloadedEndReached
+            
+            state = state.copy(
+                posts = updatedPosts,
+                userMap = updatedUserMap,
+                likedIds = updatedLikedIds,
+                isEndReached = isEnd
+            )
+            
+            // Clear preload
+            preloadedPosts = null
+            preloadedUserMap = emptyMap()
+            preloadedLikedIds = emptySet()
+            preloadedLastTimestamp = null
+            isPreloadedEndReached = false
+            
+            // Trigger preloading next page
+            if (!isEnd) {
+                preloadNextPage()
+            }
+        } else {
+            // Fetch next page normally
+            val timestamp = lastVisibleTimestamp ?: return
+            viewModelScope.launch {
+                state = state.copy(isLoading = true)
+                repo.getFeed(limit = 10, lastVisibleTimestamp = timestamp).onSuccess { posts ->
+                    val userIds = posts.map { it.user_id }.distinct()
+                    val userMap = state.userMap.toMutableMap()
+                    userIds.forEach { uid -> 
+                        if (!userMap.containsKey(uid)) {
+                            repo.getUser(uid)?.let { userMap[uid] = it }
+                        }
+                    }
+                    val likedIds = repo.getLikedPostIds(posts.map { it.id })
+                    
+                    lastVisibleTimestamp = posts.lastOrNull()?.created_at
+                    val isEnd = posts.size < 10
+
+                    state = state.copy(
+                        isLoading = false,
+                        posts = state.posts + posts,
+                        userMap = userMap,
+                        likedIds = state.likedIds + likedIds,
+                        isEndReached = isEnd
+                    )
+
+                    if (!isEnd) {
+                        preloadNextPage()
+                    }
+                }.onFailure {
+                    state = state.copy(isLoading = false, error = it.message)
+                }
+            }
         }
     }
 
@@ -116,6 +293,17 @@ class FeedViewModel : ViewModel() {
                     }
                 }
                 state = state.copy(stories = stories, userMap = userMap)
+
+                // Save to cache
+                cacheManager.saveFeedCache(
+                    CachedFeedData(
+                        posts = state.posts,
+                        stories = stories,
+                        userMap = userMap,
+                        likedIds = state.likedIds,
+                        savedIds = state.savedIds
+                    )
+                )
             }
         }
     }

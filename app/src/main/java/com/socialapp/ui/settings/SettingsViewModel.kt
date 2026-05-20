@@ -23,6 +23,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     var isAdmin by mutableStateOf(false)
         private set
 
+    var language by mutableStateOf(prefs.getString("language", "vi") ?: "vi")
+        private set
+
     init { loadUserSettings() }
 
     private fun loadUserSettings() {
@@ -50,5 +53,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             repo.updatePremiumStatus(enabled).onSuccess { isPremium = enabled }
         }
+    }
+
+    fun setAppLanguage(lang: String) {
+        language = lang
+        prefs.edit().putString("language", lang).apply()
     }
 }

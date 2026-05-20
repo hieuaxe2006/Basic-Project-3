@@ -16,5 +16,6 @@ data class Post(
     val tags: List<String> = emptyList(),
     val background_color: String = "",
     val is_private: Boolean = false,
-    val comments_disabled: Boolean = false
+    val comments_disabled: Boolean = false,
+    val group_id: String = ""
 )
