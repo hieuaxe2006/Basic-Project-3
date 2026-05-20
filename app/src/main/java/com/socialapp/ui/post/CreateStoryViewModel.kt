@@ -21,11 +21,14 @@ data class CreateStoryState(
     val isSuccess: Boolean = false,
     val error: String? = null,
     val textContent: String = "",
-    val backgroundColor: String = "#1877F2"
+    val backgroundColor: String = "#1877F2",
+    val selectedImageUri: Uri? = null,
+    val visibility: String = "public" // "public", "friends", "private"
 )
 
 class CreateStoryViewModel : ViewModel() {
     private val repo = SocialRepository()
+    private val storage = FirebaseStorage.getInstance()
     
     var state by mutableStateOf(CreateStoryState())
         private set
@@ -36,6 +39,14 @@ class CreateStoryViewModel : ViewModel() {
 
     fun updateColor(color: String) {
         state = state.copy(backgroundColor = color)
+    }
+
+    fun updateImage(uri: Uri?) {
+        state = state.copy(selectedImageUri = uri)
+    }
+
+    fun updateVisibility(visibility: String) {
+        state = state.copy(visibility = visibility)
     }
 
     fun createStory() {
@@ -49,12 +60,23 @@ class CreateStoryViewModel : ViewModel() {
                 calendar.add(Calendar.DAY_OF_YEAR, 1)
                 val expiresAt = Timestamp(calendar.time)
 
+                var imageUrl = ""
+                val uri = state.selectedImageUri
+                if (uri != null) {
+                    val ref = storage.reference.child("stories/${UUID.randomUUID()}")
+                    ref.putFile(uri).await()
+                    imageUrl = ref.downloadUrl.await().toString()
+                }
+
+                val type = if (imageUrl.isNotBlank()) "image" else "text"
+
                 val story = Story(
                     userId = uid,
-                    imageUrl = "",
+                    imageUrl = imageUrl,
                     text = state.textContent,
                     backgroundColor = state.backgroundColor,
-                    type = "text",
+                    type = type,
+                    visibility = state.visibility,
                     createdAt = createdAt,
                     expiresAt = expiresAt
                 )

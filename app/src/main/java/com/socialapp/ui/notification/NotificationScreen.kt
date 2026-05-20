@@ -82,7 +82,7 @@ fun NotificationScreen(
                             onClick = {
                                 viewModel.markAsSeen(notification.id)
                                 when (notification.type) {
-                                    "like", "comment" -> if (notification.postId.isNotBlank()) onNavigateToPost(notification.postId)
+                                    "like", "comment", "post_approved" -> if (notification.postId.isNotBlank()) onNavigateToPost(notification.postId)
                                     "follow", "friend_request", "friend_accept" -> onNavigateToProfile(notification.senderId)
                                 }
                             }

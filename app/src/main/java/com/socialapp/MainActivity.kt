@@ -51,6 +51,20 @@ class MainActivity : ComponentActivity() {
             val isDark = rememberDarkModePreference()
             val context = LocalContext.current
 
+            DisposableEffect(isDark) {
+                enableEdgeToEdge(
+                    statusBarStyle = androidx.activity.SystemBarStyle.auto(
+                        android.graphics.Color.TRANSPARENT,
+                        android.graphics.Color.TRANSPARENT,
+                    ) { isDark },
+                    navigationBarStyle = androidx.activity.SystemBarStyle.auto(
+                        android.graphics.Color.TRANSPARENT,
+                        android.graphics.Color.TRANSPARENT,
+                    ) { isDark }
+                )
+                onDispose {}
+            }
+
             // Xin quyền cho Android 13+
             val permissionLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.RequestPermission()

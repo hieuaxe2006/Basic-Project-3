@@ -154,7 +154,9 @@ fun ProfileScreen(
                     EditProfileContent(
                         user = state.user,
                         isSaving = state.isSaving,
-                        onSave = { username, bio -> viewModel.saveProfile(username, bio) },
+                        onSave = { username, bio, age, hometown, birthday, hobbies, trainingRegime -> 
+                            viewModel.saveProfile(username, bio, age, hometown, birthday, hobbies, trainingRegime) 
+                        },
                         onCancel = { viewModel.toggleEdit() },
                         modifier = Modifier.padding(padding)
                     )
@@ -357,6 +359,7 @@ fun ProfileScreen(
             }
         )
     }
+    /*
     if (state.generatedWorkout != null) {
         val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
         val context = androidx.compose.ui.platform.LocalContext.current
@@ -398,6 +401,7 @@ fun ProfileScreen(
             }
         )
     }
+    */
 }
 
 @Composable
@@ -549,6 +553,7 @@ private fun ProfileContent(
                                 GymMetricItem(value = if (user.deadlift_pr > 0) "${user.deadlift_pr} kg" else "--", label = "Deadlift")
                             }
 
+                            /*
                             if (isOwnProfile) {
                                 Spacer(Modifier.height(16.dp))
                                 val state = viewModel.state
@@ -572,6 +577,7 @@ private fun ProfileContent(
                                     }
                                 }
                             }
+                            */
                         }
                     }
 
@@ -727,23 +733,47 @@ private fun PostThumbnail(post: Post, onShareClick: () -> Unit) {
 private fun EditProfileContent(
     user: User,
     isSaving: Boolean,
-    onSave: (String, String) -> Unit,
+    onSave: (String, String, Int, String, String, String, String) -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var username by remember(user) { mutableStateOf(user.username) }
     var bio by remember(user) { mutableStateOf(user.bio) }
+    var ageText by remember(user) { mutableStateOf(if (user.age > 0) user.age.toString() else "") }
+    var hometown by remember(user) { mutableStateOf(user.hometown) }
+    var birthday by remember(user) { mutableStateOf(user.birthday) }
+    var hobbies by remember(user) { mutableStateOf(user.hobbies) }
+    var trainingRegime by remember(user) { mutableStateOf(user.trainingRegime) }
 
-    Column(modifier = modifier.fillMaxSize().padding(24.dp)) {
+    Column(modifier = modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState())) {
         Text("Chỉnh sửa thông tin", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
         OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Tên hiển thị") }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(value = bio, onValueChange = { bio = it }, label = { Text("Tiểu sử") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+        Spacer(Modifier.height(16.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(value = ageText, onValueChange = { ageText = it }, label = { Text("Tuổi") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            OutlinedTextField(value = birthday, onValueChange = { birthday = it }, label = { Text("Sinh nhật") }, modifier = Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(16.dp))
+        OutlinedTextField(value = hometown, onValueChange = { hometown = it }, label = { Text("Quê quán") }, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(16.dp))
+        OutlinedTextField(value = hobbies, onValueChange = { hobbies = it }, label = { Text("Sở thích") }, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(16.dp))
+        OutlinedTextField(value = trainingRegime, onValueChange = { trainingRegime = it }, label = { Text("Chế độ tập luyện (VD: Tuần 5 buổi)") }, modifier = Modifier.fillMaxWidth())
+        
         Spacer(Modifier.height(32.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Hủy") }
-            Button(onClick = { onSave(username, bio) }, modifier = Modifier.weight(1f), enabled = !isSaving) {
+            Button(
+                onClick = { 
+                    val age = ageText.toIntOrNull() ?: 0
+                    onSave(username, bio, age, hometown, birthday, hobbies, trainingRegime) 
+                }, 
+                modifier = Modifier.weight(1f), 
+                enabled = !isSaving
+            ) {
                 if (isSaving) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White) else Text("Lưu")
             }
         }

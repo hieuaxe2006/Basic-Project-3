@@ -19,5 +19,10 @@ data class User(
     val body_fat: Double = 0.0,
     val bench_pr: Double = 0.0,
     val squat_pr: Double = 0.0,
-    val deadlift_pr: Double = 0.0
+    val deadlift_pr: Double = 0.0,
+    val age: Int = 0,
+    val hometown: String = "",
+    val birthday: String = "",
+    val hobbies: String = "",
+    val trainingRegime: String = ""
 )

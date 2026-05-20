@@ -6,6 +6,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.ListenerRegistration
 import com.socialapp.data.model.Comment
 import com.socialapp.data.model.FriendRequest
 import com.socialapp.data.model.Notification
@@ -317,22 +318,52 @@ class SocialRepository {
     }
 
     fun getNotificationsFlow(): Flow<List<Notification>> = callbackFlow {
-        val uid = currentUid ?: run { trySend(emptyList()); close(); return@callbackFlow }
-        val listener = db.collection("notifications")
-            .whereEqualTo("receiverId", uid)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
-            .limit(50)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Log.e("SocialRepository", "Notification listener error", error)
-                    return@addSnapshotListener
-                }
-                if (snapshot != null) {
-                    val notifications = snapshot.toObjects(Notification::class.java)
-                    trySend(notifications)
+        var listener: ListenerRegistration? = null
+        val auth = FirebaseAuth.getInstance()
+        val uid = currentUid
+        if (uid == null) {
+            // Wait for auth state to provide UID
+            val authListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+                val newUid = firebaseAuth.currentUser?.uid
+                if (newUid != null && listener == null) {
+                    listener = db.collection("notifications")
+                        .whereEqualTo("receiverId", newUid)
+                        .limit(50)
+                        .addSnapshotListener { snapshot, error ->
+                            if (error != null) {
+                                Log.e("SocialRepository", "Notification listener error", error)
+                                return@addSnapshotListener
+                            }
+                            snapshot?.let {
+                                val notifications = it.toObjects(Notification::class.java)
+                                    .sortedByDescending { it.createdAt }
+                                trySend(notifications).isSuccess
+                            }
+                        }
                 }
             }
-        awaitClose { listener.remove() }
+            auth.addAuthStateListener(authListener)
+            awaitClose {
+                listener?.remove()
+                auth.removeAuthStateListener(authListener)
+            }
+        } else {
+            listener = db.collection("notifications")
+                .whereEqualTo("receiverId", uid)
+                .limit(50)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        Log.e("SocialRepository", "Notification listener error", error)
+                        return@addSnapshotListener
+                    }
+                    snapshot?.let {
+                        val notifications = it.toObjects(Notification::class.java)
+                            .sortedByDescending { it.createdAt }
+                        trySend(notifications).isSuccess
+                    }
+                }
+            awaitClose { listener?.remove() }
+        }
     }
 
     suspend fun markNotificationAsSeen(notificationId: String): Result<Unit> = runCatching {
@@ -353,23 +384,34 @@ class SocialRepository {
 
     // --- Feed & Explore ---
     suspend fun getFeed(limit: Long = 20, lastVisibleTimestamp: Timestamp? = null): Result<List<Post>> = runCatching {
+        val uid = currentUid
         var query = db.collection("posts").orderBy("created_at", Query.Direction.DESCENDING)
         if (lastVisibleTimestamp != null) {
             query = query.startAfter(lastVisibleTimestamp)
         }
-        query.limit(limit).get().await().toObjects(Post::class.java)
+        val posts = query.limit(limit * 2).get().await().toObjects(Post::class.java)
+        posts.filter { it.status == "approved" || it.user_id == uid }.take(limit.toInt())
     }
 
     suspend fun getUserPosts(uid: String): Result<List<Post>> = runCatching {
-        db.collection("posts").whereEqualTo("user_id", uid).get().await().toObjects(Post::class.java).sortedByDescending { it.created_at }
+        val viewerUid = currentUid
+        db.collection("posts")
+            .whereEqualTo("user_id", uid)
+            .get()
+            .await()
+            .toObjects(Post::class.java)
+            .filter { it.status == "approved" || it.user_id == viewerUid }
+            .sortedByDescending { it.created_at }
     }
 
     // THÊM MỚI: Lấy bài viết theo tag
     suspend fun getPostsByTag(tag: String): Result<List<Post>> = runCatching {
+        val uid = currentUid
         db.collection("posts")
             .whereArrayContains("tags", tag)
             .get().await()
             .toObjects(Post::class.java)
+            .filter { it.status == "approved" || it.user_id == uid }
             .sortedByDescending { it.created_at }
     }
 
@@ -470,11 +512,13 @@ class SocialRepository {
     }
 
     suspend fun getGroupPosts(groupId: String): Result<List<Post>> = runCatching {
+        val uid = currentUid
         db.collection("posts")
             .whereEqualTo("group_id", groupId)
             .get()
             .await()
             .toObjects(Post::class.java)
+            .filter { it.status == "approved" || it.user_id == uid }
             .sortedByDescending { it.created_at }
     }
 

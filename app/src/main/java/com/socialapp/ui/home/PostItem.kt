@@ -31,6 +31,7 @@ import com.socialapp.data.model.Post
 import com.socialapp.data.model.User
 import com.google.firebase.Timestamp
 import com.socialapp.ui.post.WorkoutLogBlock // Đảm bảo đúng package
+import com.socialapp.ui.chat.UserAvatar
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
@@ -90,13 +91,8 @@ fun PostItem(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f).clickable { onUserClick(post.user_id) }
                 ) {
-                    if (user?.avatar?.isNotBlank() == true) {
-                        AsyncImage(model = user.avatar, contentDescription = null, modifier = Modifier.size(40.dp).clip(CircleShape), contentScale = ContentScale.Crop)
-                    } else {
-                        Surface(modifier = Modifier.size(40.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-                            Box(contentAlignment = Alignment.Center) { Text(user?.username?.take(1) ?: "?") }
-                        }
-                    }
+                    val displayUser = user ?: User(id = post.user_id, username = "Unknown")
+                    UserAvatar(user = displayUser, size = 40.dp)
                     Spacer(Modifier.width(10.dp))
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {

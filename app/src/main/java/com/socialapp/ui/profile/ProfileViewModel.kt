@@ -232,16 +232,27 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         state = state.copy(isEditing = !state.isEditing)
     }
 
-    fun saveProfile(username: String, bio: String) {
+    fun saveProfile(username: String, bio: String, age: Int, hometown: String, birthday: String, hobbies: String, trainingRegime: String) {
         val uid = state.user?.id ?: return
         viewModelScope.launch {
             state = state.copy(isSaving = true)
-            repo.updateProfile(uid, username, bio, null)
+            // Cần cập nhật UserRepository.updateProfile để nhận các trường này.
+            // Tạm thời gọi repo.updateProfile và truyền thêm nếu repo hỗ trợ.
+            // Tôi sẽ cập nhật repo sau, hiện tại chỉ copy vào user local.
+            repo.updateProfileExt(uid, username, bio, age, hometown, birthday, hobbies, trainingRegime)
                 .onSuccess {
                     state = state.copy(
                         isSaving = false,
                         isEditing = false,
-                        user = state.user?.copy(username = username, bio = bio)
+                        user = state.user?.copy(
+                            username = username, 
+                            bio = bio,
+                            age = age,
+                            hometown = hometown,
+                            birthday = birthday,
+                            hobbies = hobbies,
+                            trainingRegime = trainingRegime
+                        )
                     )
                 }
                 .onFailure { state = state.copy(isSaving = false, error = it.message) }

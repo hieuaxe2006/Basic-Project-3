@@ -3,6 +3,8 @@ package com.socialapp.ui.home
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.*
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -34,6 +36,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -79,6 +82,7 @@ fun HomeScreen(
     var showShareSheet by remember { mutableStateOf(false) }
     var selectedPost by remember { mutableStateOf<Post?>(null) }
     var searchQuery by remember { mutableStateOf("") }
+    var isSearchExpanded by remember { mutableStateOf(false) }
 
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
@@ -93,16 +97,25 @@ fun HomeScreen(
         }
     }
 
-    var topBarHeightPx by remember { mutableStateOf(0) }
-    val density = LocalDensity.current
-    val topBarHeightDp = remember(topBarHeightPx) { with(density) { topBarHeightPx.toDp() } }
-
-    val topBarTranslationY by animateFloatAsState(
-        targetValue = if (barsVisible) 0f else -topBarHeightPx.toFloat(),
-        label = "TopBarTranslation"
-    )
-
     val listState = rememberLazyListState()
+
+    val isAtTop by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+        }
+    }
+
+    LaunchedEffect(isAtTop) {
+        if (isAtTop) {
+            barsVisible = true
+        }
+    }
+
+    val animatedHeaderHeight by animateDpAsState(
+        targetValue = if (barsVisible) 56.dp else 0.dp,
+        animationSpec = tween(300),
+        label = "HeaderHeight"
+    )
     val shouldLoadMore by remember {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -120,63 +133,14 @@ fun HomeScreen(
     }
 
     Scaffold(
-        modifier = Modifier.nestedScroll(nestedScrollConnection),
-        bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 8.dp
-            ) {
-                NavigationBarItem(
-                    icon = { Icon(imageVector = Icons.Default.Home, contentDescription = null) },
-                    label = { Text("Home") },
-                    selected = true,
-                    onClick = { feedViewModel.loadFeed(isRefresh = true) }
-                )
-                NavigationBarItem(
-                    icon = { Icon(imageVector = Icons.Default.Group, contentDescription = null) },
-                    label = { Text(t("groups")) },
-                    selected = false,
-                    onClick = onNavigateToExplore
-                )
-                NavigationBarItem(
-                    icon = { Icon(imageVector = Icons.Default.AddCircle, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp), contentDescription = null) },
-                    label = { Text("Post") },
-                    selected = false,
-                    onClick = onNavigateToCreatePost
-                )
-                NavigationBarItem(
-                    icon = {
-                        BadgedBox(
-                            badge = {
-                                if (state.unreadChatCount > 0) {
-                                    Badge(containerColor = Color.Red) {
-                                        Text(state.unreadChatCount.toString(), color = Color.White)
-                                    }
-                                }
-                            }
-                        ) {
-                            Icon(imageVector = Icons.Default.Chat, contentDescription = "Chat")
-                        }
-                    },
-                    label = { Text("Chat") },
-                    selected = false,
-                    onClick = onNavigateToChat
-                )
-                NavigationBarItem(
-                    icon = { Icon(imageVector = Icons.Default.Person, contentDescription = null) },
-                    label = { Text("Profile") },
-                    selected = false,
-                    onClick = { onNavigateToProfile(null) }
-                )
-            }
-        }
+        modifier = Modifier.nestedScroll(nestedScrollConnection)
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (state.isLoading && state.posts.isEmpty()) {
                 val brush = shimmerBrush()
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(top = topBarHeightDp),
+                    contentPadding = PaddingValues(top = 56.dp),
                     userScrollEnabled = false
                 ) {
                     item {
@@ -204,7 +168,7 @@ fun HomeScreen(
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(top = topBarHeightDp)
+                        contentPadding = PaddingValues(top = 56.dp)
                     ) {
                         item { QuickCreatePostBar(onNavigateToProfile, onNavigateToCreatePost, state.currentUser) }
                         item { StorySection(state.stories, state.currentUser, state.userMap, onCreateStory = onNavigateToCreateStory, onStoryClick = onNavigateToViewStory) }
@@ -231,120 +195,131 @@ fun HomeScreen(
                 }
             }
 
+            val alpha by animateFloatAsState(
+                targetValue = if (barsVisible) 1f else 0f,
+                animationSpec = tween(if (barsVisible) 250 else 150),
+                label = "HeaderAlpha"
+            )
+
             Surface(
-                shadowElevation = 2.dp,
+                shadowElevation = if (animatedHeaderHeight > 0.dp) 2.dp else 0.dp,
                 color = MaterialTheme.colorScheme.surface,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .onSizeChanged { topBarHeightPx = it.height }
-                    .graphicsLayer { translationY = topBarTranslationY }
+                    .fillMaxWidth()
+                    .height(animatedHeaderHeight)
+                    .clipToBounds()
             ) {
-                Column {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp)
-                            .padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { this.alpha = alpha }
+                ) {
+                    AnimatedVisibility(
+                        visible = isSearchExpanded,
+                        enter = slideInVertically { -it } + fadeIn(),
+                        exit = slideOutVertically { -it } + fadeOut()
                     ) {
-                        Text(
-                            text = "GymHub",
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 24.sp,
+                        Row(
                             modifier = Modifier
-                                .weight(1f)
-                                .clickable {
-                                    scope.launch {
-                                        listState.animateScrollToItem(0)
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .padding(horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = { isSearchExpanded = false; searchQuery = "" }) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                            }
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                placeholder = { Text("Tìm kiếm...") },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(vertical = 4.dp),
+                                singleLine = true,
+                                shape = RoundedCornerShape(24.dp),
+                                leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(20.dp)) },
+                                trailingIcon = {
+                                    if (searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { searchQuery = "" }) {
+                                            Icon(Icons.Default.Clear, null, modifier = Modifier.size(20.dp))
+                                        }
                                     }
-                                    feedViewModel.loadFeed(isRefresh = true)
-                                    feedViewModel.loadStories()
-                                }
-                        )
-                        BadgedBox(
-                            badge = {
-                                if (state.unreadNotificationCount > 0) {
-                                    Badge { Text(state.unreadNotificationCount.toString()) }
-                                }
-                            }
-                        ) {
-                            IconButton(
-                                onClick = onNavigateToNotifications,
-                                modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                            ) {
-                                Icon(imageVector = Icons.Outlined.Notifications, contentDescription = "Notifications", modifier = Modifier.size(20.dp))
-                            }
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        IconButton(
-                            onClick = onNavigateToSettings,
-                            modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                        ) {
-                            Icon(imageVector = Icons.Outlined.Settings, contentDescription = "Settings", modifier = Modifier.size(20.dp))
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        IconButton(
-                            onClick = { onNavigateToSearch("") },
-                            modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                        ) {
-                            Icon(imageVector = Icons.Outlined.Search, contentDescription = "Search", modifier = Modifier.size(20.dp))
+                                },
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                keyboardActions = KeyboardActions(onSearch = {
+                                    if (searchQuery.isNotBlank()) {
+                                        onNavigateToSearch(searchQuery)
+                                    }
+                                }),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = Color.Transparent,
+                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            )
                         }
                     }
 
-                    BasicTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { if (searchQuery.isNotBlank()) onNavigateToSearch(searchQuery) }),
-                        textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 6.dp)
-                            .height(36.dp),
-                        decorationBox = { innerTextField ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
+                    AnimatedVisibility(
+                        visible = !isSearchExpanded,
+                        enter = fadeIn(),
+                        exit = fadeOut()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "GymHub",
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 26.sp,
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
-                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(18.dp))
-                                    .padding(horizontal = 12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                                    if (searchQuery.isEmpty()) {
-                                        Text(
-                                            text = "Tìm gymer, bài tập...",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                            fontSize = 14.sp
-                                        )
+                                    .weight(1f)
+                                    .clickable {
+                                        scope.launch {
+                                            listState.animateScrollToItem(0)
+                                        }
+                                        feedViewModel.loadFeed(isRefresh = true)
+                                        feedViewModel.loadStories()
                                     }
-                                    innerTextField()
+                            )
+                            BadgedBox(
+                                badge = {
+                                    if (state.unreadNotificationCount > 0) {
+                                        Badge { Text(state.unreadNotificationCount.toString()) }
+                                    }
                                 }
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(
-                                        onClick = { searchQuery = "" },
-                                        modifier = Modifier.size(18.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Clear,
-                                            contentDescription = "Clear",
-                                            modifier = Modifier.size(14.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
+                            ) {
+                                IconButton(
+                                    onClick = onNavigateToNotifications,
+                                    modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                                ) {
+                                    Icon(imageVector = Icons.Outlined.Notifications, contentDescription = "Notifications", modifier = Modifier.size(24.dp))
                                 }
                             }
+                            Spacer(Modifier.width(12.dp))
+                            IconButton(
+                                onClick = onNavigateToSettings,
+                                modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                            ) {
+                                Icon(imageVector = Icons.Outlined.Settings, contentDescription = "Settings", modifier = Modifier.size(24.dp))
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            IconButton(
+                                onClick = { isSearchExpanded = true },
+                                modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                            ) {
+                                Icon(imageVector = Icons.Outlined.Search, contentDescription = "Search", modifier = Modifier.size(24.dp))
+                            }
                         }
-                    )
+                    }
                 }
             }
 
@@ -608,18 +583,15 @@ fun StoryItem(story: Story, user: User?, onClick: (String) -> Unit) {
             )
 
             // User Avatar at top left
-            Surface(
-                modifier = Modifier.padding(8.dp).size(36.dp),
-                shape = CircleShape,
-                border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+            Box(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
             ) {
-                if (user?.avatar?.isNotBlank() == true) {
-                    AsyncImage(model = user.avatar, contentDescription = null, contentScale = ContentScale.Crop)
-                } else {
-                    Box(modifier = Modifier.fillMaxSize().background(Color.Gray), contentAlignment = Alignment.Center) {
-                        Text(user?.username?.take(1)?.uppercase() ?: "?", color = Color.White, fontSize = 12.sp)
-                    }
-                }
+                UserAvatar(
+                    user = user ?: User(id = story.userId, username = "Unknown"),
+                    size = 32.dp
+                )
             }
 
             // Username at bottom
@@ -640,13 +612,7 @@ fun StoryItem(story: Story, user: User?, onClick: (String) -> Unit) {
 fun QuickCreatePostBar(onProfile: (String?) -> Unit, onCreate: () -> Unit, user: User?) {
     Surface(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), color = MaterialTheme.colorScheme.surface) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant).clickable { onProfile(null) }, contentAlignment = Alignment.Center) {
-                if (user?.avatar?.isNotBlank() == true) {
-                    AsyncImage(model = user.avatar, contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
-                } else {
-                    Text(user?.username?.take(1)?.uppercase() ?: "?", fontWeight = FontWeight.Bold)
-                }
-            }
+            UserAvatar(user = user ?: User(id = "", username = "?"), size = 40.dp, onClick = { onProfile(null) })
             Surface(onClick = onCreate, modifier = Modifier.weight(1f).padding(horizontal = 12.dp).height(36.dp), shape = RoundedCornerShape(20.dp), color = Color.Transparent, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                 Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.padding(horizontal = 16.dp)) {
                     Text("Hôm nay tập gì?", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)

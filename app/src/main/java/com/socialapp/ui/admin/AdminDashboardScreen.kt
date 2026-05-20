@@ -14,7 +14,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,7 +57,7 @@ fun AdminDashboardScreen(
                 when (selectedTab) {
                     0 -> StatsTab(vm.state)
                     1 -> UsersTab(vm.state, onToggleBlock = { uid, status -> vm.toggleBlockUser(uid, status) })
-                    2 -> PostsTab(vm.state, onDelete = { vm.deletePost(it) })
+                    2 -> PostsTab(vm.state, onDelete = { vm.deletePost(it) }, onApprove = { vm.approvePost(it) }, onReject = { vm.rejectPost(it) })
                 }
             }
         }
@@ -98,13 +100,62 @@ fun UsersTab(state: AdminState, onToggleBlock: (String, Boolean) -> Unit) {
 }
 
 @Composable
-fun PostsTab(state: AdminState, onDelete: (String) -> Unit) {
+fun PostsTab(
+    state: AdminState,
+    onDelete: (String) -> Unit,
+    onApprove: (String) -> Unit,
+    onReject: (String) -> Unit
+) {
     LazyColumn {
         items(state.posts) { post ->
+            val statusColor = when (post.status) {
+                "approved" -> Color(0xFF2E7D32) // Green
+                "rejected" -> Color(0xFFC62828) // Red
+                else -> Color(0xFFEF6C00) // Orange (pending)
+            }
+            val statusText = when (post.status) {
+                "approved" -> "Đã duyệt"
+                "rejected" -> "Từ chối"
+                else -> "Chờ duyệt"
+            }
             ListItem(
                 headlineContent = { Text(post.content, maxLines = 2) },
-                supportingContent = { Text("ID: ${post.user_id}") },
-                trailingContent = { IconButton(onClick = { onDelete(post.id) }) { Icon(Icons.Default.Delete, tint = Color.Red, contentDescription = null) } }
+                supportingContent = {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Tác giả ID: ${post.user_id.take(8)}")
+                        Surface(
+                            color = statusColor.copy(alpha = 0.1f),
+                            contentColor = statusColor,
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                statusText,
+                                fontSize = 11.sp,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                },
+                trailingContent = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (post.status == "pending") {
+                            IconButton(onClick = { onApprove(post.id) }) {
+                                Icon(Icons.Default.CheckCircle, tint = Color(0xFF2E7D32), contentDescription = "Duyệt")
+                            }
+                            IconButton(onClick = { onReject(post.id) }) {
+                                Icon(Icons.Default.Block, tint = Color(0xFFC62828), contentDescription = "Từ chối")
+                            }
+                        } else if (post.status == "approved") {
+                            IconButton(onClick = { onReject(post.id) }) {
+                                Icon(Icons.Default.Block, tint = Color(0xFFC62828), contentDescription = "Từ chối")
+                            }
+                        }
+                        IconButton(onClick = { onDelete(post.id) }) {
+                            Icon(Icons.Default.Delete, tint = Color.Red, contentDescription = "Xóa")
+                        }
+                    }
+                }
             )
             HorizontalDivider()
         }

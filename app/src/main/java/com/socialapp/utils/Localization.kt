@@ -77,7 +77,25 @@ object Localization {
         "premium_benefit_4" to "• Dark Mode & early access to new fitness groups",
         "premium_price" to "Only $4.99 / month",
         "upgrade_now" to "Upgrade Now",
-        "gymhub_premium" to "GymHub Premium"
+        "gymhub_premium" to "GymHub Premium",
+        "mark_all_read" to "Mark all as read",
+        "training_center" to "Training Center",
+        "muscle_plans" to "Muscle Plans",
+        "daily_routines" to "Daily Routines",
+        "ai_personal_plan" to "AI Personal Plan",
+        "generate_ai_plan_btn" to "Generate AI Plan",
+        "regenerate_btn" to "Regenerate Plan",
+        "ai_plan_desc" to "AI will design the most optimal training program based on your Gymer metrics from your Profile.",
+        "ai_suggested_plan" to "AI Suggested Plan:",
+        "copy_btn" to "Copy Plan",
+        "copied_msg" to "Workout plan copied!",
+        "show_more_info" to "Show More Profile Info",
+        "show_less_info" to "Show Less Profile Info",
+        "age" to "Age",
+        "birthday" to "Birthday",
+        "hometown" to "Hometown",
+        "hobbies" to "Hobbies",
+        "regime" to "Regime"
     )
 
     private val VI = mapOf(
@@ -150,7 +168,25 @@ object Localization {
         "premium_benefit_4" to "• Trải nghiệm Chế độ tối & ưu tiên tham gia các nhóm gym mới",
         "premium_price" to "Chỉ 109.000đ / tháng",
         "upgrade_now" to "Nâng cấp ngay",
-        "gymhub_premium" to "GymHub Premium"
+        "gymhub_premium" to "GymHub Premium",
+        "mark_all_read" to "Đánh dấu tất cả đã đọc",
+        "training_center" to "Trung tâm tập luyện",
+        "muscle_plans" to "Lịch tập nhóm cơ",
+        "daily_routines" to "Lịch trình hàng ngày",
+        "ai_personal_plan" to "Lịch tập cá nhân AI",
+        "generate_ai_plan_btn" to "Tạo Lịch Tập AI",
+        "regenerate_btn" to "Tạo Lại Lịch Tập",
+        "ai_plan_desc" to "AI sẽ thiết kế lộ trình tập luyện tối ưu nhất dựa trên các chỉ số Gymer của bạn ở Profile.",
+        "ai_suggested_plan" to "Lịch tập đề xuất từ AI:",
+        "copy_btn" to "Sao chép lịch tập",
+        "copied_msg" to "Đã sao chép lịch tập!",
+        "show_more_info" to "Xem thêm thông tin cá nhân",
+        "show_less_info" to "Thu gọn thông tin cá nhân",
+        "age" to "Tuổi",
+        "birthday" to "Ngày sinh",
+        "hometown" to "Quê quán",
+        "hobbies" to "Sở thích",
+        "regime" to "Chế độ tập luyện"
     )
 
     fun getString(key: String, lang: String): String {

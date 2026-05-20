@@ -52,7 +52,8 @@ class PostRepository {
             tagged_user_ids = taggedUserIds,
             created_at = Timestamp.now(),
             tags = tags,
-            background_color = backgroundColor
+            background_color = backgroundColor,
+            status = "pending"
         )
         docRef.set(post).await()
     }
