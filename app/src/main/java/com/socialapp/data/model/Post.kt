@@ -18,6 +18,6 @@ data class Post(
     val is_private: Boolean = false,
     val comments_disabled: Boolean = false,
     val group_id: String = "",
-    val status: String = "approved",
+    val status: String = "pending",
     val moderated_at: Timestamp? = null
 )

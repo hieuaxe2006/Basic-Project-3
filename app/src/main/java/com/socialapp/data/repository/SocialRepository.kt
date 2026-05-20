@@ -34,7 +34,7 @@ class SocialRepository {
     suspend fun createStory(imageUrl: String): Result<Unit> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
         val docRef = db.collection("stories").document()
-        
+
         val calendar = Calendar.getInstance()
         val createdAt = Timestamp.now()
         calendar.time = createdAt.toDate()
@@ -75,7 +75,7 @@ class SocialRepository {
         val docRef = db.collection("friend_requests").document()
         val request = FriendRequest(id = docRef.id, sender_id = uid, receiver_id = targetUid, status = "pending", created_at = Timestamp.now())
         docRef.set(request).await()
-        
+
         createNotification(
             Notification(
                 receiverId = targetUid,
@@ -94,7 +94,7 @@ class SocialRepository {
         db.collection("friend_requests").document(requestId).update("status", "accepted").await()
         val friendDocId = if (request.sender_id < request.receiver_id) "${request.sender_id}_${request.receiver_id}" else "${request.receiver_id}_${request.sender_id}"
         db.collection("friends").document(friendDocId).set(mapOf("user1" to request.sender_id, "user2" to request.receiver_id, "since" to Timestamp.now(), "users" to listOf(request.sender_id, request.receiver_id))).await()
-        
+
         val currentUser = getUser(request.receiver_id)
         if (currentUser != null) {
             createNotification(
@@ -191,7 +191,7 @@ class SocialRepository {
             docRef.set(mapOf("id" to docRef.id, "follower_id" to uid, "following_id" to targetUid)).await()
             db.collection("users").document(uid).update("following_count", FieldValue.increment(1)).await()
             db.collection("users").document(targetUid).update("followers_count", FieldValue.increment(1)).await()
-            
+
             createNotification(
                 Notification(
                     receiverId = targetUid,
@@ -233,7 +233,7 @@ class SocialRepository {
             val docRef = db.collection("likes").document()
             docRef.set(mapOf("id" to docRef.id, "user_id" to uid, "post_id" to postId)).await()
             db.collection("posts").document(postId).update("like_count", FieldValue.increment(1)).await()
-            
+
             if (post.user_id != uid) {
                 createNotification(
                     Notification(
@@ -305,7 +305,7 @@ class SocialRepository {
         val comment = Comment(id = docRef.id, post_id = postId, user_id = uid, content = content, created_at = Timestamp.now(), parent_id = parentId)
         docRef.set(comment).await()
         if (parentId.isBlank()) db.collection("posts").document(postId).update("comment_count", FieldValue.increment(1)).await()
-        
+
         if (post.user_id != uid) {
             createNotification(
                 Notification(
@@ -431,6 +431,7 @@ class SocialRepository {
             query = query.startAfter(lastVisibleTimestamp)
         }
         val posts = query.limit(limit * 2).get().await().toObjects(Post::class.java)
+        // GIỐNG FILE GỐC: Hiện bài approved HOẶC bài của chính mình đăng (dù chưa duyệt)
         posts.filter { it.status == "approved" || it.user_id == uid }.take(limit.toInt())
     }
 
@@ -441,6 +442,7 @@ class SocialRepository {
             .get()
             .await()
             .toObjects(Post::class.java)
+            // GIỐNG FILE GỐC: Chỉ khách mới bị chặn bài chưa duyệt, chủ sở hữu thấy hết
             .filter { it.status == "approved" || it.user_id == viewerUid }
             .sortedByDescending { it.created_at }
     }
@@ -451,6 +453,7 @@ class SocialRepository {
             .whereArrayContains("tags", tag)
             .get().await()
             .toObjects(Post::class.java)
+            // GIỐNG FILE GỐC
             .filter { it.status == "approved" || it.user_id == uid }
             .sortedByDescending { it.created_at }
     }
@@ -558,6 +561,7 @@ class SocialRepository {
             .get()
             .await()
             .toObjects(Post::class.java)
+            // GIỐNG FILE GỐC
             .filter { it.status == "approved" || it.user_id == uid }
             .sortedByDescending { it.created_at }
     }
@@ -571,10 +575,11 @@ class SocialRepository {
             content = content,
             image_url = imageUrl,
             created_at = Timestamp.now(),
-            group_id = groupId
+            group_id = groupId,
+            status = "pending"
         )
         docRef.set(post).await()
-        
+
         val groupRef = db.collection("groups").document(groupId)
         db.runTransaction { transaction ->
             val group = transaction.get(groupRef).toObject(Group::class.java) ?: return@runTransaction

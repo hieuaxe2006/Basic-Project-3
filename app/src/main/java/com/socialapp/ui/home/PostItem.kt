@@ -1,6 +1,7 @@
 package com.socialapp.ui.home
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -21,16 +22,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color // THÊM IMPORT NÀY
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp // THÊM IMPORT NÀY
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.socialapp.data.model.Post
 import com.socialapp.data.model.User
 import com.google.firebase.Timestamp
-import com.socialapp.ui.post.WorkoutLogBlock // Đảm bảo đúng package
+import com.socialapp.ui.post.WorkoutLogBlock
 import com.socialapp.ui.chat.UserAvatar
 import java.util.Date
 import java.util.concurrent.TimeUnit
@@ -116,12 +117,35 @@ fun PostItem(
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(formatRelativeTime(post.created_at), fontSize = 12.sp, color = Color.Gray)
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                text = if (post.is_private) "• Riêng tư" else "• Công khai",
-                                fontSize = 12.sp,
-                                color = Color.Gray
-                            )
+
+                            // HIỂN THỊ TRẠNG THÁI DUYỆT BÀI CHO CHỦ SỞ HỮU
+                            if (isOwnPost) {
+                                Spacer(Modifier.width(6.dp))
+                                val (statusText, statusColor) = when(post.status) {
+                                    "approved" -> "Đã duyệt" to Color(0xFF4CAF50)
+                                    "rejected" -> "Bị từ chối" to Color(0xFFF44336)
+                                    else -> "Chờ duyệt" to Color(0xFFEF6C00)
+                                }
+                                Surface(
+                                    color = statusColor.copy(alpha = 0.1f),
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        "• $statusText",
+                                        fontSize = 11.sp,
+                                        color = statusColor,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            } else {
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = if (post.is_private) "• Riêng tư" else "• Công khai",
+                                    fontSize = 12.sp,
+                                    color = Color.Gray
+                                )
+                            }
                         }
                     }
                 }
@@ -175,7 +199,6 @@ fun PostItem(
                 Text(post.content)
             }
 
-            // HIỂN THỊ WORKOUT LOG
             if (post.code_snippet.isNotBlank()) {
                 WorkoutLogBlock(log = post.code_snippet, workoutType = post.language)
             }
@@ -202,7 +225,6 @@ fun PostItem(
     }
 }
 
-// HÀM NÀY PHẢI NẰM NGOÀI CÙNG FILE
 fun formatRelativeTime(timestamp: Timestamp): String {
     val diff = Date().time - timestamp.toDate().time
     return when {

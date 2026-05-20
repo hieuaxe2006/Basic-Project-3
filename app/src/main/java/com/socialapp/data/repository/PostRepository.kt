@@ -53,7 +53,7 @@ class PostRepository {
             created_at = Timestamp.now(),
             tags = tags,
             background_color = backgroundColor,
-            status = "pending"
+            status = "pending" // Đảm bảo trạng thái luôn là chờ duyệt
         )
         docRef.set(post).await()
     }
