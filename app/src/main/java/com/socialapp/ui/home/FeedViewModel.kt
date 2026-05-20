@@ -175,6 +175,33 @@ class FeedViewModel : ViewModel() {
     private fun observeSavedPosts() = viewModelScope.launch { repo.getSavedPostIdsFlow().collect { state = state.copy(savedIds = it) } }
     private fun observeFollowing() = viewModelScope.launch { repo.getFollowingIdsFlow().collect { state = state.copy(followingIds = it) } }
 
+    fun updatePostVisibility(postId: String, isPrivate: Boolean) {
+        viewModelScope.launch {
+            repo.updatePostVisibility(postId, isPrivate).onSuccess {
+                val updated = state.posts.map { if (it.id == postId) it.copy(is_private = isPrivate) else it }
+                state = state.copy(posts = updated)
+            }
+        }
+    }
+
+    fun updatePostCommentsDisabled(postId: String, commentsDisabled: Boolean) {
+        viewModelScope.launch {
+            repo.updatePostCommentsDisabled(postId, commentsDisabled).onSuccess {
+                val updated = state.posts.map { if (it.id == postId) it.copy(comments_disabled = commentsDisabled) else it }
+                state = state.copy(posts = updated)
+            }
+        }
+    }
+
+    fun deletePost(postId: String) {
+        viewModelScope.launch {
+            repo.deletePost(postId).onSuccess {
+                val updated = state.posts.filter { it.id != postId }
+                state = state.copy(posts = updated)
+            }
+        }
+    }
+
     override fun onCleared() {
         messageListener?.remove()
         notificationListener?.remove()

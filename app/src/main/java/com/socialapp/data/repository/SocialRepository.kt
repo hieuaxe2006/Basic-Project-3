@@ -397,4 +397,16 @@ class SocialRepository {
         val uid = currentUid ?: throw Exception("Not logged in")
         db.collection("users").document(uid).update("is_private", isPrivate).await()
     }
+
+    suspend fun deletePost(postId: String): Result<Unit> = runCatching {
+        db.collection("posts").document(postId).delete().await()
+    }
+
+    suspend fun updatePostVisibility(postId: String, isPrivate: Boolean): Result<Unit> = runCatching {
+        db.collection("posts").document(postId).update("is_private", isPrivate).await()
+    }
+
+    suspend fun updatePostCommentsDisabled(postId: String, commentsDisabled: Boolean): Result<Unit> = runCatching {
+        db.collection("posts").document(postId).update("comments_disabled", commentsDisabled).await()
+    }
 }
