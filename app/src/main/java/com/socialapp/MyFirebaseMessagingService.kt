@@ -28,7 +28,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
 
-        // Trích xuất nội dung thông báo
         val title = remoteMessage.notification?.title ?: "SocialApp"
         val message = remoteMessage.notification?.body ?: ""
 
@@ -46,7 +45,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         val channelId = "social_app_notifications"
         val notificationBuilder = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // Bạn có thể thay icon khác
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title)
             .setContentText(messageBody)
             .setAutoCancel(true)

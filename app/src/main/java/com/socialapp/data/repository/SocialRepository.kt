@@ -133,6 +133,27 @@ class SocialRepository {
         requests.mapNotNull { req -> getUser(req.sender_id)?.let { req to it } }
     }
 
+    // --- Block, Mute, Report ---
+    suspend fun blockUser(targetUid: String): Result<Unit> = runCatching {
+        val uid = currentUid ?: throw Exception("Not logged in")
+        db.collection("users").document(uid).update("blocked_users", FieldValue.arrayUnion(targetUid)).await()
+    }
+
+    suspend fun muteUser(targetUid: String): Result<Unit> = runCatching {
+        val uid = currentUid ?: throw Exception("Not logged in")
+        db.collection("users").document(uid).update("muted_users", FieldValue.arrayUnion(targetUid)).await()
+    }
+
+    suspend fun reportUser(targetUid: String, reason: String): Result<Unit> = runCatching {
+        val uid = currentUid ?: throw Exception("Not logged in")
+        db.collection("reports").add(mapOf(
+            "reporter_id" to uid,
+            "target_id" to targetUid,
+            "reason" to reason,
+            "timestamp" to Timestamp.now()
+        )).await()
+    }
+
     // --- Follow, Like, Save Flow ---
     suspend fun toggleFollow(targetUid: String): Result<Boolean> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
@@ -359,7 +380,6 @@ class SocialRepository {
         db.collection("posts").whereEqualTo("user_id", uid).get().await().toObjects(Post::class.java).sortedByDescending { it.created_at }
     }
 
-    // THÊM MỚI: Lấy bài viết theo tag
     suspend fun getPostsByTag(tag: String): Result<List<Post>> = runCatching {
         db.collection("posts")
             .whereArrayContains("tags", tag)

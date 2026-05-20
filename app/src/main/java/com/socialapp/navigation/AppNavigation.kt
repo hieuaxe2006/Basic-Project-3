@@ -191,7 +191,31 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
         ) { bse ->
             val uid = bse.arguments?.getString("uid") ?: ""
             val name = bse.arguments?.getString("name") ?: ""
-            ChatScreen(otherUid = uid, otherName = name, viewModel = viewModel(), onBack = { navController.popBackStack() })
+            ChatScreen(
+                otherUid = uid, 
+                otherName = name, 
+                viewModel = viewModel(), 
+                onBack = { navController.popBackStack() },
+                onShowInfo = { u, n -> navController.navigate(Screen.ChatInfo.createRoute(u, n)) }
+            )
+        }
+
+        // --- Màn hình Thông tin Chat ---
+        composable(
+            route = Screen.ChatInfo.route,
+            arguments = listOf(
+                navArgument("uid") { type = NavType.StringType },
+                navArgument("name") { type = NavType.StringType }
+            )
+        ) { bse ->
+            val uid = bse.arguments?.getString("uid") ?: ""
+            val name = bse.arguments?.getString("name") ?: ""
+            ChatInfoScreen(
+                uid = uid, 
+                name = name, 
+                onBack = { navController.popBackStack() },
+                onViewProfile = { u -> navController.navigate(Screen.Profile.createRoute(u)) }
+            )
         }
 
         // --- Màn hình Trang cá nhân ---

@@ -1,5 +1,8 @@
 package com.socialapp.ui.chat
 
+import android.content.Context
+import android.net.Uri
+import android.util.Base64
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -7,12 +10,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.ListenerRegistration
 import com.socialapp.data.model.Message
+import com.socialapp.data.remote.ImgBBApi
 import com.socialapp.data.repository.ChatRepository
 import kotlinx.coroutines.launch
 
 data class ChatState(
     val messages: List<Message> = emptyList(),
     val isSending: Boolean = false,
+    val isUploading: Boolean = false,
     val error: String? = null
 )
 
@@ -53,6 +58,28 @@ class ChatViewModel : ViewModel() {
             repo.sendMessage(receiverId, content)
                 .onFailure { state = state.copy(error = it.message) }
             state = state.copy(isSending = false)
+        }
+    }
+
+    fun sendImage(receiverId: String, uri: Uri, context: Context) {
+        viewModelScope.launch {
+            state = state.copy(isUploading = true)
+            try {
+                val bytes = context.contentResolver.openInputStream(uri)?.readBytes()
+                val base64 = bytes?.let { Base64.encodeToString(it, Base64.NO_WRAP) }
+                    ?: throw Exception("Failed to read image")
+                
+                ImgBBApi.uploadImage(base64).onSuccess { url ->
+                    repo.sendMessage(receiverId, "Sent an image:\n$url")
+                        .onFailure { state = state.copy(error = it.message) }
+                }.onFailure {
+                    state = state.copy(error = it.message)
+                }
+            } catch (e: Exception) {
+                state = state.copy(error = e.message)
+            } finally {
+                state = state.copy(isUploading = false)
+            }
         }
     }
 
