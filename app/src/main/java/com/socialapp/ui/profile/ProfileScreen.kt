@@ -4,6 +4,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -77,7 +78,7 @@ fun ProfileScreen(
     uid: String? = null,
     onBack: (() -> Unit)? = null,
     onNavigateToChat: (String, String) -> Unit = { _, _ -> },
-    onLogout: () -> Unit // Thêm callback để thực hiện đăng xuất
+    onLogout: () -> Unit
 ) {
     val context = LocalContext.current
     LaunchedEffect(uid) { viewModel.loadProfile(uid) }
@@ -87,7 +88,7 @@ fun ProfileScreen(
     var showFollowingSheet by remember { mutableStateOf(false) }
     var showPasswordSheet by remember { mutableStateOf(false) }
     var showShareSheet by remember { mutableStateOf(false) }
-    var showLogoutDialog by remember { mutableStateOf(false) } // State cho hộp thoại đăng xuất
+    var showLogoutDialog by remember { mutableStateOf(false) }
     var showMetricsDialog by remember { mutableStateOf(false) }
     var postToShare by remember { mutableStateOf<Post?>(null) }
 
@@ -102,11 +103,23 @@ fun ProfileScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        state.user?.username ?: t("profile"),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            state.user?.username ?: t("profile"),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
+                        )
+                        // THAY ĐỔI: HIỆN ICON XÁC MINH NẾU LÀ PREMIUM
+                        if (state.user?.is_premium == true) {
+                            Spacer(Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.Default.Verified,
+                                contentDescription = "Premium",
+                                tint = Color(0xFFFFD700),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                 },
                 navigationIcon = {
                     if (onBack != null) {
@@ -123,7 +136,6 @@ fun ProfileScreen(
                         IconButton(onClick = { viewModel.toggleEdit() }) {
                             Icon(Icons.Default.Edit, "Chỉnh sửa")
                         }
-                        // Nút Đăng xuất
                         IconButton(onClick = { showLogoutDialog = true }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ExitToApp,
@@ -132,8 +144,7 @@ fun ProfileScreen(
                             )
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                }
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -154,8 +165,8 @@ fun ProfileScreen(
                     EditProfileContent(
                         user = state.user,
                         isSaving = state.isSaving,
-                        onSave = { username, bio, age, hometown, birthday, hobbies, trainingRegime -> 
-                            viewModel.saveProfile(username, bio, age, hometown, birthday, hobbies, trainingRegime) 
+                        onSave = { username, bio, age, hometown, birthday, hobbies, trainingRegime ->
+                            viewModel.saveProfile(username, bio, age, hometown, birthday, hobbies, trainingRegime)
                         },
                         onCancel = { viewModel.toggleEdit() },
                         modifier = Modifier.padding(padding)
@@ -189,7 +200,6 @@ fun ProfileScreen(
         }
     }
 
-    // Hộp thoại xác nhận đăng xuất
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
@@ -214,7 +224,6 @@ fun ProfileScreen(
         )
     }
 
-    // Các ModalBottomSheet giữ nguyên
     if (showFollowersSheet) {
         ModalBottomSheet(onDismissRequest = { showFollowersSheet = false }) {
             UserListContent(
@@ -285,7 +294,7 @@ fun ProfileScreen(
                     modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text("Thông số cơ thể:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                    Text("Thông số cơ thể:", fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(
                             value = heightText,
@@ -309,8 +318,7 @@ fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
-                    Spacer(Modifier.height(4.dp))
-                    Text("Kỷ lục cá nhân (PR):", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                    Text("Kỷ lục cá nhân (PR):", fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(
                             value = benchText,
@@ -359,49 +367,6 @@ fun ProfileScreen(
             }
         )
     }
-    /*
-    if (state.generatedWorkout != null) {
-        val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
-        val context = androidx.compose.ui.platform.LocalContext.current
-        AlertDialog(
-            onDismissRequest = { viewModel.clearGeneratedWorkout() },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.AutoAwesome, null, tint = Color(0xFF00E676))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Lịch tập đề xuất từ AI")
-                }
-            },
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-                ) {
-                    Text(
-                        text = state.generatedWorkout ?: "",
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(state.generatedWorkout ?: ""))
-                        Toast.makeText(context, "Đã sao chép lịch tập!", Toast.LENGTH_SHORT).show()
-                    }
-                ) {
-                    Text("Sao chép")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.clearGeneratedWorkout() }) {
-                    Text("Đóng")
-                }
-            }
-        )
-    }
-    */
 }
 
 @Composable
@@ -420,7 +385,7 @@ private fun ProfileContent(
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { viewModel.uploadAvatar(it, context) }
     }
-    
+
     var selectedTabIndex by remember { mutableIntStateOf(0) }
 
     LazyColumn(
@@ -440,8 +405,10 @@ private fun ProfileContent(
                         Surface(
                             modifier = Modifier.size(120.dp),
                             shape = CircleShape,
-                            border = androidx.compose.foundation.BorderStroke(4.dp, MaterialTheme.colorScheme.surface),
-                            shadowElevation = 4.dp
+                            // THAY ĐỔI: VIỀN VÀNG DÀY NẾU LÀ PREMIUM
+                            border = if (user.is_premium) BorderStroke(4.dp, Color(0xFFFFD700))
+                            else BorderStroke(4.dp, MaterialTheme.colorScheme.surface),
+                            shadowElevation = if (user.is_premium) 12.dp else 4.dp
                         ) {
                             if (user.avatar.isNotBlank()) {
                                 AsyncImage(
@@ -463,6 +430,19 @@ private fun ProfileContent(
                                 }
                             }
                         }
+
+                        // THAY ĐỔI: VƯƠNG MIỆN NHỎ GẮN TRÊN AVATAR
+                        if (user.is_premium) {
+                            Surface(
+                                modifier = Modifier.size(34.dp).align(Alignment.TopEnd),
+                                shape = CircleShape,
+                                color = Color(0xFFFFD700),
+                                border = BorderStroke(2.dp, Color.White)
+                            ) {
+                                Icon(Icons.Default.WorkspacePremium, null, tint = Color.Black, modifier = Modifier.padding(5.dp))
+                            }
+                        }
+
                         if (isOwnProfile) {
                             IconButton(
                                 onClick = { avatarPicker.launch("image/*") },
@@ -478,11 +458,28 @@ private fun ProfileContent(
                     }
 
                     Spacer(Modifier.height(12.dp))
-                    Text(
-                        user.username,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            user.username,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        // THAY ĐỔI: VƯƠNG MIỆN CẠNH TÊN
+                        if (user.is_premium) {
+                            Text(" 👑", fontSize = 24.sp)
+                        }
+                    }
+
+                    // THAY ĐỔI: NHÃN HIỆU PREMIUM
+                    if (user.is_premium) {
+                        Surface(
+                            color = Color(0xFFFFD700).copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            Text("GYMHUB PREMIUM MEMBER", color = Color(0xFFDAA520), fontSize = 11.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
+                        }
+                    }
 
                     if (user.bio.isNotBlank()) {
                         Text(
@@ -503,7 +500,7 @@ private fun ProfileContent(
                         StatItem("${user.following_count}", "Đang theo dõi", onFollowingClick)
                     }
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(16.dp))
 
                     Card(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -553,35 +550,30 @@ private fun ProfileContent(
                                 GymMetricItem(value = if (user.deadlift_pr > 0) "${user.deadlift_pr} kg" else "--", label = "Deadlift")
                             }
 
-                            /*
-                            if (isOwnProfile) {
+                            if (isOwnProfile && user.is_premium) {
                                 Spacer(Modifier.height(16.dp))
-                                val state = viewModel.state
                                 Button(
                                     onClick = { viewModel.generateWorkoutPlan() },
                                     modifier = Modifier.fillMaxWidth(),
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676)),
                                     shape = RoundedCornerShape(8.dp),
-                                    enabled = !state.isGeneratingWorkout
+                                    enabled = !viewModel.state.isGeneratingWorkout
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        if (state.isGeneratingWorkout) {
-                                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
-                                            Spacer(Modifier.width(8.dp))
-                                            Text("AI đang phân tích...", color = Color.White)
-                                        } else {
-                                            Icon(Icons.Default.AutoAwesome, null, tint = Color.Black)
-                                            Spacer(Modifier.width(8.dp))
-                                            Text("Tạo Lịch Tập AI cá nhân hóa", color = Color.Black, fontWeight = FontWeight.Bold)
-                                        }
+                                    if (viewModel.state.isGeneratingWorkout) {
+                                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("AI đang phân tích...", color = Color.White)
+                                    } else {
+                                        Icon(Icons.Default.AutoAwesome, null, tint = Color.Black)
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("Tạo Lịch Tập AI Cá Nhân", color = Color.Black, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
-                            */
                         }
                     }
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(16.dp))
 
                     if (isOwnProfile) {
                         Button(
@@ -761,17 +753,17 @@ private fun EditProfileContent(
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(value = hobbies, onValueChange = { hobbies = it }, label = { Text("Sở thích") }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(16.dp))
-        OutlinedTextField(value = trainingRegime, onValueChange = { trainingRegime = it }, label = { Text("Chế độ tập luyện (VD: Tuần 5 buổi)") }, modifier = Modifier.fillMaxWidth())
-        
+        OutlinedTextField(value = trainingRegime, onValueChange = { trainingRegime = it }, label = { Text("Chế độ tập luyện") }, modifier = Modifier.fillMaxWidth())
+
         Spacer(Modifier.height(32.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Hủy") }
             Button(
-                onClick = { 
+                onClick = {
                     val age = ageText.toIntOrNull() ?: 0
-                    onSave(username, bio, age, hometown, birthday, hobbies, trainingRegime) 
-                }, 
-                modifier = Modifier.weight(1f), 
+                    onSave(username, bio, age, hometown, birthday, hobbies, trainingRegime)
+                },
+                modifier = Modifier.weight(1f),
                 enabled = !isSaving
             ) {
                 if (isSaving) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White) else Text("Lưu")
@@ -879,13 +871,11 @@ private fun ChangePasswordContent(isLoading: Boolean, success: Boolean, error: S
 }
 
 @Composable
-private fun RowScope.GymMetricItem(value: String, label: String) {
+private fun GymMetricItem(value: String, label: String) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.weight(1f)
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = value, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
-        Spacer(Modifier.height(2.dp))
+        Text(text = value, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Text(text = label, fontSize = 11.sp, color = Color.Gray)
     }
 }

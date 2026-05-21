@@ -24,15 +24,19 @@ class PostRepository {
     ): Result<Unit> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
 
+        // Kiểm tra quyền Premium và giới hạn bài đăng
         val userDoc = db.collection("users").document(uid).get().await()
         val isPremium = userDoc.getBoolean("is_premium") ?: false
+
         if (!isPremium) {
             val postsQuery = db.collection("posts")
                 .whereEqualTo("user_id", uid)
                 .get()
                 .await()
+
+            // Giới hạn 5 bài cho tài khoản thường
             if (postsQuery.size() >= 5) {
-                throw Exception("Tài khoản Free chỉ được đăng tối đa 5 bài. Nâng cấp Premium để đăng không giới hạn!")
+                throw Exception("Bạn đã đạt giới hạn 5 bài đăng cho tài khoản miễn phí. Vui lòng nâng cấp Premium để đăng bài không giới hạn!")
             }
         }
 
@@ -53,7 +57,7 @@ class PostRepository {
             created_at = Timestamp.now(),
             tags = tags,
             background_color = backgroundColor,
-            status = "pending" // Đảm bảo trạng thái luôn là chờ duyệt
+            status = "pending"
         )
         docRef.set(post).await()
     }

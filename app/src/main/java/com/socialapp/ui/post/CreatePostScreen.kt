@@ -1,8 +1,10 @@
 package com.socialapp.ui.post
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -37,7 +39,8 @@ import coil.compose.AsyncImage
 fun CreatePostScreen(
     viewModel: CreatePostViewModel,
     onBack: () -> Unit,
-    onPostCreated: () -> Unit
+    onPostCreated: () -> Unit,
+    onNavigateToPremium: () -> Unit // Tham số mới thêm vào
 ) {
     var content by remember { mutableStateOf("") }
     var showCodeInput by remember { mutableStateOf(false) }
@@ -55,7 +58,11 @@ fun CreatePostScreen(
     }
 
     LaunchedEffect(state.isSuccess) {
-        if (state.isSuccess) { viewModel.reset(); onPostCreated() }
+        if (state.isSuccess) {
+            Toast.makeText(context, "Đã gửi bài viết, vui lòng chờ Admin duyệt!", Toast.LENGTH_LONG).show()
+            viewModel.reset()
+            onPostCreated()
+        }
     }
 
     Scaffold(
@@ -65,7 +72,11 @@ fun CreatePostScreen(
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
                 actions = {
                     Button(onClick = { viewModel.createPost(content, context) }, enabled = !state.isLoading) {
-                        Text("Đăng")
+                        if (state.isLoading) {
+                            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
+                        } else {
+                            Text("Đăng")
+                        }
                     }
                 }
             )
@@ -87,12 +98,41 @@ fun CreatePostScreen(
                                 Text("${state.selectedTaggedUsers[0].username}${if(state.selectedTaggedUsers.size > 1) " và ${state.selectedTaggedUsers.size-1} người khác" else ""}", fontWeight = FontWeight.Bold, color = Color(0xFF1877F2), fontSize = 12.sp)
                             }
                         }
-                        Text("Công khai", fontSize = 11.sp, color = Color.Gray)
+                        Text("Trạng thái: Chờ duyệt", fontSize = 11.sp, color = Color.Gray)
                     }
                 }
 
                 Spacer(Modifier.height(16.dp))
                 TextField(value = content, onValueChange = { content = it }, placeholder = { Text("Hôm nay bạn tập gì?") }, modifier = Modifier.fillMaxWidth(), colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent))
+
+                // HIỂN THỊ THÔNG BÁO LỖI (Ví dụ: Lỗi giới hạn bài đăng Premium)
+                state.error?.let {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                Spacer(Modifier.width(8.dp))
+                                Text(it, color = MaterialTheme.colorScheme.error, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            // Nút chuyển trang Premium
+                            if (it.contains("Premium")) {
+                                Spacer(Modifier.height(8.dp))
+                                Button(
+                                    onClick = onNavigateToPremium,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD700)),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text("NÂNG CẤP PREMIUM NGAY", color = Color.Black, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -127,7 +167,7 @@ fun CreatePostScreen(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                         shape = RoundedCornerShape(8.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00E676))
+                        border = BorderStroke(1.dp, Color(0xFF00E676))
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -159,7 +199,7 @@ fun CreatePostScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text("Nhật ký tập luyện", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                            
+
                             var expanded by remember { mutableStateOf(false) }
                             Box {
                                 Text(
@@ -224,6 +264,7 @@ fun CreatePostScreen(
         ModalBottomSheet(onDismissRequest = { showTagSheet = false }) {
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp).heightIn(max = 400.dp)) {
                 Text("Gắn thẻ bạn bè", fontWeight = FontWeight.Bold)
+                if (state.isLoadingFriends) Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 LazyColumn {
                     items(state.friends) { friend ->
                         Row(modifier = Modifier.fillMaxWidth().clickable { viewModel.toggleTagUser(friend) }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -232,7 +273,7 @@ fun CreatePostScreen(
                         }
                     }
                 }
-                Button(onClick = { showTagSheet = false }, modifier = Modifier.fillMaxWidth()) { Text("Xong") }
+                Button(onClick = { showTagSheet = false }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) { Text("Xong") }
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.socialapp.data.repository
 
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -15,7 +16,23 @@ class UserRepository {
 
     val currentUid get() = auth.currentUser?.uid
 
-    // Thêm hàm này để lưu Token FCM vào Firestore
+    // Nâng cấp Premium và ghi nhận doanh thu
+    suspend fun upgradeToPremium(amount: Long): Result<Unit> = runCatching {
+        val uid = currentUid ?: throw Exception("Chưa đăng nhập")
+
+        // 1. Cập nhật trạng thái người dùng
+        db.collection("users").document(uid).update("is_premium", true).await()
+
+        // 2. Tạo bản ghi giao dịch
+        val transaction = mapOf(
+            "userId" to uid,
+            "amount" to amount,
+            "timestamp" to Timestamp.now(),
+            "type" to "premium_upgrade"
+        )
+        db.collection("premium_transactions").add(transaction).await()
+    }
+
     suspend fun updateFcmToken(token: String): Result<Unit> = runCatching {
         val uid = currentUid ?: return@runCatching
         db.collection("users").document(uid).update("fcm_token", token).await()
@@ -24,12 +41,6 @@ class UserRepository {
     suspend fun getUser(uid: String): Result<User> = runCatching {
         val doc = db.collection("users").document(uid).get().await()
         doc.toObject(User::class.java)?.copy(id = doc.id) ?: throw Exception("User not found")
-    }
-
-    suspend fun updateProfile(uid: String, username: String, bio: String, avatar: String?): Result<Unit> = runCatching {
-        val updates = mutableMapOf<String, Any>("username" to username, "bio" to bio)
-        avatar?.let { updates["avatar"] = it }
-        db.collection("users").document(uid).update(updates).await()
     }
 
     suspend fun updateProfileExt(
