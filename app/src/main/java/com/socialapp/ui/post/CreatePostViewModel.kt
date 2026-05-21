@@ -95,6 +95,7 @@ class CreatePostViewModel : ViewModel() {
             ).onSuccess {
                 state = state.copy(isLoading = false, isSuccess = true)
             }.onFailure {
+                // Cập nhật thông báo lỗi từ Repository (bao gồm lỗi giới hạn bài đăng)
                 state = state.copy(isLoading = false, error = it.message)
             }
         }
@@ -135,4 +136,7 @@ class CreatePostViewModel : ViewModel() {
     }
 
     fun reset() { state = CreatePostState() }
+
+    // Thêm hàm xóa lỗi khi cần
+    fun clearError() { state = state.copy(error = null) }
 }

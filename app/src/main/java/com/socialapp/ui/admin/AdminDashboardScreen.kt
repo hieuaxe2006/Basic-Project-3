@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.text.NumberFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,11 +68,14 @@ fun AdminDashboardScreen(
 
 @Composable
 fun StatsTab(state: AdminState) {
+    val formatter = NumberFormat.getCurrencyInstance(Locale("vi", "VN"))
+    val formattedRevenue = formatter.format(state.revenue)
+
     Column(modifier = Modifier.padding(16.dp)) {
         Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Doanh thu nâng cấp tài khoản", style = MaterialTheme.typography.titleMedium)
-                Text("${state.revenue} VNĐ", style = MaterialTheme.typography.headlineMedium, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
+                Text("Doanh thu thực tế (Premium)", style = MaterialTheme.typography.titleMedium)
+                Text(formattedRevenue, style = MaterialTheme.typography.headlineMedium, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
             }
         }
         Text("Bảng xếp hạng Follower", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
@@ -139,7 +144,6 @@ fun PostsTab(
                 },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Chỉ hiện nút duyệt/từ chối nếu bài chưa được duyệt hoặc đã bị từ chối trước đó
                         if (post.status == "pending") {
                             IconButton(onClick = { onApprove(post.id) }) {
                                 Icon(Icons.Default.CheckCircle, tint = Color(0xFF2E7D32), contentDescription = "Duyệt")
@@ -148,7 +152,6 @@ fun PostsTab(
                                 Icon(Icons.Default.Block, tint = Color(0xFFC62828), contentDescription = "Từ chối")
                             }
                         } else if (post.status == "approved") {
-                            // Nếu đã duyệt rồi vẫn có thể thu hồi (chuyển sang từ chối)
                             IconButton(onClick = { onReject(post.id) }) {
                                 Icon(Icons.Default.Block, tint = Color(0xFFC62828), contentDescription = "Từ chối")
                             }

@@ -67,9 +67,18 @@ class AdminRepository {
         db.collection("users").document(uid).update("is_blocked", isBlocked).await()
     }
 
+    // --- CẬP NHẬT: Tính tổng doanh thu thực tế từ các giao dịch ---
     suspend fun getRevenueStats(): Long {
-        val premiumCount = db.collection("users").whereEqualTo("is_premium", true).get().await().size()
-        return premiumCount * 200000L
+        return try {
+            val snapshot = db.collection("premium_transactions").get().await()
+            var total = 0L
+            for (doc in snapshot.documents) {
+                total += doc.getLong("amount") ?: 0L
+            }
+            total
+        } catch (e: Exception) {
+            0L
+        }
     }
 
     suspend fun getTopFollowers(): List<User> =

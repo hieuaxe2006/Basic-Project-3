@@ -66,8 +66,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     fun loadProfile(uid: String? = null) {
         val targetUid = uid ?: repo.currentUid ?: return
         profileJob?.cancel()
-        
-        // Load cache first
+
+        // Tải dữ liệu từ cache trước để hiện nhanh giao diện
         val cached = cacheManager.loadProfileCache(targetUid)
         if (cached != null) {
             state = state.copy(
@@ -79,6 +79,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             state = state.copy(isLoading = true, error = null)
         }
 
+        // LẮNG NGHE REAL-TIME: Đảm bảo vương miện và viền vàng hiện ngay khi mua Premium
         profileJob = viewModelScope.launch {
             repo.getUserSnapshot(targetUid)
                 .catch { e -> state = state.copy(isLoading = false, error = e.message) }
@@ -142,7 +143,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             state = state.copy(isPostsLoading = true)
             socialRepo.getUserPosts(uid)
-                .onSuccess { 
+                .onSuccess {
                     state = state.copy(isPostsLoading = false, postedPosts = it)
                     saveToCache()
                 }
@@ -164,7 +165,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     fun loadSavedPosts() {
         viewModelScope.launch {
             socialRepo.getSavedPosts()
-                .onSuccess { 
+                .onSuccess {
                     state = state.copy(isPostsLoading = false, savedPosts = it)
                     saveToCache()
                 }
@@ -236,23 +237,11 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         val uid = state.user?.id ?: return
         viewModelScope.launch {
             state = state.copy(isSaving = true)
-            // Cần cập nhật UserRepository.updateProfile để nhận các trường này.
-            // Tạm thời gọi repo.updateProfile và truyền thêm nếu repo hỗ trợ.
-            // Tôi sẽ cập nhật repo sau, hiện tại chỉ copy vào user local.
             repo.updateProfileExt(uid, username, bio, age, hometown, birthday, hobbies, trainingRegime)
                 .onSuccess {
                     state = state.copy(
                         isSaving = false,
-                        isEditing = false,
-                        user = state.user?.copy(
-                            username = username, 
-                            bio = bio,
-                            age = age,
-                            hometown = hometown,
-                            birthday = birthday,
-                            hobbies = hobbies,
-                            trainingRegime = trainingRegime
-                        )
+                        isEditing = false
                     )
                 }
                 .onFailure { state = state.copy(isSaving = false, error = it.message) }
@@ -272,17 +261,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             state = state.copy(isSaving = true)
             repo.updateGymMetrics(uid, height, weight, bodyFat, benchPr, squatPr, deadliftPr)
                 .onSuccess {
-                    state = state.copy(
-                        isSaving = false,
-                        user = state.user?.copy(
-                            height = height,
-                            weight = weight,
-                            body_fat = bodyFat,
-                            bench_pr = benchPr,
-                            squat_pr = squatPr,
-                            deadlift_pr = deadliftPr
-                        )
-                    )
+                    state = state.copy(isSaving = false)
                 }
                 .onFailure { state = state.copy(isSaving = false, error = it.message) }
         }
@@ -299,10 +278,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 val url = ImgBBApi.uploadImage(base64).getOrThrow()
                 repo.updateAvatar(uid, url)
                     .onSuccess {
-                        state = state.copy(
-                            isUploadingAvatar = false,
-                            user = state.user?.copy(avatar = url)
-                        )
+                        state = state.copy(isUploadingAvatar = false)
                     }
                     .onFailure { state = state.copy(isUploadingAvatar = false, error = it.message) }
             } catch (e: Exception) {

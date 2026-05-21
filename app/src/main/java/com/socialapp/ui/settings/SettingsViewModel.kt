@@ -8,10 +8,12 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.socialapp.data.repository.SocialRepository
+import com.socialapp.data.repository.UserRepository
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val repo = SocialRepository()
+    private val userRepo = UserRepository()
     private val prefs = application.getSharedPreferences("settings_prefs", Context.MODE_PRIVATE)
 
     var isDarkMode by mutableStateOf(prefs.getBoolean("dark_mode", false))
@@ -26,15 +28,17 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     var language by mutableStateOf(prefs.getString("language", "vi") ?: "vi")
         private set
 
-    init { loadUserSettings() }
+    init { observeUserSettings() }
 
-    private fun loadUserSettings() {
+    // Lắng nghe dữ liệu người dùng thời gian thực
+    private fun observeUserSettings() {
+        val uid = userRepo.currentUid ?: return
         viewModelScope.launch {
-            val uid = repo.currentUid ?: return@launch
-            val user = repo.getUser(uid)
-            isPremium = user?.is_premium ?: false
-            isAdmin = user?.role == "admin"
-            privateAccount = user?.is_private ?: false
+            userRepo.getUserSnapshot(uid).collect { user ->
+                isPremium = user.is_premium
+                isAdmin = user.role == "admin"
+                privateAccount = user.is_private
+            }
         }
     }
 
@@ -49,7 +53,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    // Khóa chức năng toggle premium nếu đã là true (Không cho hủy)
     fun togglePremium(enabled: Boolean) {
+        if (isPremium) return // Nếu đã là premium thì không cho phép gạt Switch về false
         viewModelScope.launch {
             repo.updatePremiumStatus(enabled).onSuccess { isPremium = enabled }
         }

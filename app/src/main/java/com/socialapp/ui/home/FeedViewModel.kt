@@ -16,6 +16,8 @@ import com.socialapp.data.model.Story
 import com.socialapp.data.model.User
 import com.socialapp.data.repository.ChatRepository
 import com.socialapp.data.repository.SocialRepository
+import com.socialapp.data.repository.UserRepository
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 data class FeedState(
@@ -43,13 +45,13 @@ data class FeedState(
 
 class FeedViewModel(application: Application) : AndroidViewModel(application) {
     private val repo = SocialRepository()
+    private val userRepo = UserRepository()
     private val chatRepo = ChatRepository()
     private val db = FirebaseFirestore.getInstance()
     private var messageListener: ListenerRegistration? = null
     private var notificationListener: ListenerRegistration? = null
     private val cacheManager = LocalCacheManager(application)
 
-    // Pagination double buffering state
     private var lastVisibleTimestamp: Timestamp? = null
     private var preloadedPosts: List<Post>? = null
     private var preloadedUserMap: Map<String, User> = emptyMap()
@@ -65,11 +67,23 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
         loadCachedData()
         loadFeed(isRefresh = true)
         loadStories()
-        loadCurrentUser()
+        observeCurrentUserRealtime() // CẬP NHẬT: Lắng nghe realtime
         observeSavedPosts()
         observeFollowing()
         observeUnreadMessages()
         observeUnreadNotifications()
+    }
+
+    // Lắng nghe dữ liệu User thời gian thực để cập nhật Premium ngay lập tức
+    private fun observeCurrentUserRealtime() {
+        val uid = currentUid ?: return
+        viewModelScope.launch {
+            userRepo.getUserSnapshot(uid).collect { user ->
+                val updatedUserMap = state.userMap.toMutableMap()
+                updatedUserMap[uid] = user
+                state = state.copy(currentUser = user, userMap = updatedUserMap)
+            }
+        }
     }
 
     private fun loadCachedData() {
@@ -82,7 +96,6 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
                 likedIds = cached.likedIds,
                 savedIds = cached.savedIds
             )
-            // If cache loaded posts, track the last post's timestamp
             lastVisibleTimestamp = cached.posts.lastOrNull()?.created_at
         }
     }
@@ -111,20 +124,6 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
             }
     }
 
-    private fun loadCurrentUser() {
-        val uid = currentUid ?: return
-        viewModelScope.launch {
-            val user = repo.getUser(uid)
-            if (user != null) {
-                val updatedUserMap = state.userMap.toMutableMap()
-                updatedUserMap[uid] = user
-                state = state.copy(currentUser = user, userMap = updatedUserMap)
-            } else {
-                state = state.copy(currentUser = user)
-            }
-        }
-    }
-
     fun loadFeed(isRefresh: Boolean = false) {
         viewModelScope.launch {
             if (isRefresh) {
@@ -146,41 +145,31 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
             repo.getFeed(limit = 10, lastVisibleTimestamp = null).onSuccess { posts ->
                 val userIds = posts.map { it.user_id }.distinct()
                 val userMap = state.userMap.toMutableMap()
-                userIds.forEach { uid -> 
+                userIds.forEach { uid ->
                     if (!userMap.containsKey(uid)) {
                         repo.getUser(uid)?.let { userMap[uid] = it }
                     }
                 }
                 val likedIds = repo.getLikedPostIds(posts.map { it.id })
-                
+
                 lastVisibleTimestamp = posts.lastOrNull()?.created_at
                 val isEnd = posts.size < 10
 
                 state = state.copy(
-                    isLoading = false, 
-                    posts = posts, 
-                    userMap = userMap, 
+                    isLoading = false,
+                    posts = posts,
+                    userMap = userMap,
                     likedIds = likedIds,
                     isEndReached = isEnd
                 )
 
-                // Save to cache
                 cacheManager.saveFeedCache(
-                    CachedFeedData(
-                        posts = posts,
-                        stories = state.stories,
-                        userMap = userMap,
-                        likedIds = likedIds,
-                        savedIds = state.savedIds
-                    )
+                    CachedFeedData(posts = posts, stories = state.stories, userMap = userMap, likedIds = likedIds, savedIds = state.savedIds)
                 )
 
-                // Preload the next page immediately in the background
-                if (!isEnd) {
-                    preloadNextPage()
-                }
-            }.onFailure { 
-                state = state.copy(isLoading = false, error = it.message) 
+                if (!isEnd) { preloadNextPage() }
+            }.onFailure {
+                state = state.copy(isLoading = false, error = it.message)
             }
         }
     }
@@ -188,18 +177,14 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
     fun preloadNextPage() {
         if (state.isPreloading || state.isEndReached || preloadedPosts != null) return
         val timestamp = lastVisibleTimestamp ?: return
-        
         viewModelScope.launch {
             state = state.copy(isPreloading = true)
             repo.getFeed(limit = 10, lastVisibleTimestamp = timestamp).onSuccess { posts ->
                 if (posts.isNotEmpty()) {
                     val userIds = posts.map { it.user_id }.distinct()
                     val userMap = mutableMapOf<String, User>()
-                    userIds.forEach { uid ->
-                        repo.getUser(uid)?.let { userMap[uid] = it }
-                    }
+                    userIds.forEach { uid -> repo.getUser(uid)?.let { userMap[uid] = it } }
                     val likedIds = repo.getLikedPostIds(posts.map { it.id })
-                    
                     preloadedPosts = posts
                     preloadedUserMap = userMap
                     preloadedLikedIds = likedIds
@@ -217,67 +202,34 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadNextPage() {
         if (state.isLoading || state.isEndReached) return
-
         val preloaded = preloadedPosts
         if (preloaded != null) {
-            // Consume preload
             val updatedPosts = state.posts + preloaded
             val updatedUserMap = state.userMap + preloadedUserMap
             val updatedLikedIds = state.likedIds + preloadedLikedIds
-            
             lastVisibleTimestamp = preloadedLastTimestamp
             val isEnd = isPreloadedEndReached
-            
-            state = state.copy(
-                posts = updatedPosts,
-                userMap = updatedUserMap,
-                likedIds = updatedLikedIds,
-                isEndReached = isEnd
-            )
-            
-            // Clear preload
+            state = state.copy(posts = updatedPosts, userMap = updatedUserMap, likedIds = updatedLikedIds, isEndReached = isEnd)
             preloadedPosts = null
             preloadedUserMap = emptyMap()
             preloadedLikedIds = emptySet()
             preloadedLastTimestamp = null
             isPreloadedEndReached = false
-            
-            // Trigger preloading next page
-            if (!isEnd) {
-                preloadNextPage()
-            }
+            if (!isEnd) { preloadNextPage() }
         } else {
-            // Fetch next page normally
             val timestamp = lastVisibleTimestamp ?: return
             viewModelScope.launch {
                 state = state.copy(isLoading = true)
                 repo.getFeed(limit = 10, lastVisibleTimestamp = timestamp).onSuccess { posts ->
                     val userIds = posts.map { it.user_id }.distinct()
                     val userMap = state.userMap.toMutableMap()
-                    userIds.forEach { uid -> 
-                        if (!userMap.containsKey(uid)) {
-                            repo.getUser(uid)?.let { userMap[uid] = it }
-                        }
-                    }
+                    userIds.forEach { uid -> if (!userMap.containsKey(uid)) { repo.getUser(uid)?.let { userMap[uid] = it } } }
                     val likedIds = repo.getLikedPostIds(posts.map { it.id })
-                    
                     lastVisibleTimestamp = posts.lastOrNull()?.created_at
                     val isEnd = posts.size < 10
-
-                    state = state.copy(
-                        isLoading = false,
-                        posts = state.posts + posts,
-                        userMap = userMap,
-                        likedIds = state.likedIds + likedIds,
-                        isEndReached = isEnd
-                    )
-
-                    if (!isEnd) {
-                        preloadNextPage()
-                    }
-                }.onFailure {
-                    state = state.copy(isLoading = false, error = it.message)
-                }
+                    state = state.copy(isLoading = false, posts = state.posts + posts, userMap = userMap, likedIds = state.likedIds + likedIds, isEndReached = isEnd)
+                    if (!isEnd) { preloadNextPage() }
+                }.onFailure { state = state.copy(isLoading = false, error = it.message) }
             }
         }
     }
@@ -287,23 +239,9 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
             repo.getStories().onSuccess { stories ->
                 val userIds = stories.map { it.userId }.distinct()
                 val userMap = state.userMap.toMutableMap()
-                userIds.forEach { uid ->
-                    if (!userMap.containsKey(uid)) {
-                        repo.getUser(uid)?.let { userMap[uid] = it }
-                    }
-                }
+                userIds.forEach { uid -> if (!userMap.containsKey(uid)) { repo.getUser(uid)?.let { userMap[uid] = it } } }
                 state = state.copy(stories = stories, userMap = userMap)
-
-                // Save to cache
-                cacheManager.saveFeedCache(
-                    CachedFeedData(
-                        posts = state.posts,
-                        stories = stories,
-                        userMap = userMap,
-                        likedIds = state.likedIds,
-                        savedIds = state.savedIds
-                    )
-                )
+                cacheManager.saveFeedCache(CachedFeedData(posts = state.posts, stories = stories, userMap = userMap, likedIds = state.likedIds, savedIds = state.savedIds))
             }
         }
     }
@@ -321,22 +259,15 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
     fun loadFriends() {
         viewModelScope.launch {
             state = state.copy(isListLoading = true)
-            repo.getFriends()
-                .onSuccess { state = state.copy(isListLoading = false, friendsList = it) }
-                .onFailure { state = state.copy(isListLoading = false, error = it.message) }
+            repo.getFriends().onSuccess { state = state.copy(isListLoading = false, friendsList = it) }.onFailure { state = state.copy(isListLoading = false, error = it.message) }
         }
     }
 
     fun searchUsers(query: String) {
-        if (query.isBlank()) {
-            state = state.copy(searchResults = emptyList())
-            return
-        }
+        if (query.isBlank()) { state = state.copy(searchResults = emptyList()); return }
         viewModelScope.launch {
             state = state.copy(isSearching = true)
-            repo.searchUsers(query)
-                .onSuccess { state = state.copy(isSearching = false, searchResults = it) }
-                .onFailure { state = state.copy(isSearching = false) }
+            repo.searchUsers(query).onSuccess { state = state.copy(isSearching = false, searchResults = it) }.onFailure { state = state.copy(isSearching = false) }
         }
     }
 
@@ -344,50 +275,26 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             state = state.copy(isSharing = true, shareSuccess = null)
             val shareContent = "Chia sẻ bài viết:\n${post.content}\n${post.image_url}".trim()
-            chatRepo.sendMessage(friend.id, shareContent)
-                .onSuccess {
-                    state = state.copy(isSharing = false, shareSuccess = "Đã gửi đến ${friend.username}")
-                }
-                .onFailure {
-                    state = state.copy(isSharing = false, error = it.message)
-                }
+            chatRepo.sendMessage(friend.id, shareContent).onSuccess { state = state.copy(isSharing = false, shareSuccess = "Đã gửi đến ${friend.username}") }.onFailure { state = state.copy(isSharing = false, error = it.message) }
         }
     }
 
-    fun clearShareState() {
-        state = state.copy(shareSuccess = null)
-    }
-
+    fun clearShareState() { state = state.copy(shareSuccess = null) }
     fun toggleSave(postId: String) = viewModelScope.launch { repo.toggleSavePost(postId) }
     fun toggleFollow(targetUid: String) = viewModelScope.launch { repo.toggleFollow(targetUid) }
     private fun observeSavedPosts() = viewModelScope.launch { repo.getSavedPostIdsFlow().collect { state = state.copy(savedIds = it) } }
     private fun observeFollowing() = viewModelScope.launch { repo.getFollowingIdsFlow().collect { state = state.copy(followingIds = it) } }
 
     fun updatePostVisibility(postId: String, isPrivate: Boolean) {
-        viewModelScope.launch {
-            repo.updatePostVisibility(postId, isPrivate).onSuccess {
-                val updated = state.posts.map { if (it.id == postId) it.copy(is_private = isPrivate) else it }
-                state = state.copy(posts = updated)
-            }
-        }
+        viewModelScope.launch { repo.updatePostVisibility(postId, isPrivate).onSuccess { val updated = state.posts.map { if (it.id == postId) it.copy(is_private = isPrivate) else it }; state = state.copy(posts = updated) } }
     }
 
     fun updatePostCommentsDisabled(postId: String, commentsDisabled: Boolean) {
-        viewModelScope.launch {
-            repo.updatePostCommentsDisabled(postId, commentsDisabled).onSuccess {
-                val updated = state.posts.map { if (it.id == postId) it.copy(comments_disabled = commentsDisabled) else it }
-                state = state.copy(posts = updated)
-            }
-        }
+        viewModelScope.launch { repo.updatePostCommentsDisabled(postId, commentsDisabled).onSuccess { val updated = state.posts.map { if (it.id == postId) it.copy(comments_disabled = commentsDisabled) else it }; state = state.copy(posts = updated) } }
     }
 
     fun deletePost(postId: String) {
-        viewModelScope.launch {
-            repo.deletePost(postId).onSuccess {
-                val updated = state.posts.filter { it.id != postId }
-                state = state.copy(posts = updated)
-            }
-        }
+        viewModelScope.launch { repo.deletePost(postId).onSuccess { val updated = state.posts.filter { it.id != postId }; state = state.copy(posts = updated) } }
     }
 
     override fun onCleared() {

@@ -31,6 +31,7 @@ import com.socialapp.ui.settings.SettingsScreen
 import com.socialapp.ui.admin.AdminDashboardScreen
 import com.socialapp.ui.admin.AdminViewModel
 import com.socialapp.ui.notification.NotificationScreen
+import com.socialapp.ui.premium.PremiumScreen // Thêm import màn hình Premium
 
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.material3.Scaffold
@@ -243,8 +244,14 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
                     CreatePostScreen(
                         viewModel = viewModel(),
                         onBack = { navController.popBackStack() },
-                        onPostCreated = { navController.popBackStack() }
+                        onPostCreated = { navController.popBackStack() },
+                        onNavigateToPremium = { navController.navigate(Screen.Premium.route) } // TRUYỀN LAMBDA ĐIỀU HƯỚNG
                     )
+                }
+
+                // --- Màn hình Premium ---
+                composable(Screen.Premium.route) {
+                    PremiumScreen(onBack = { navController.popBackStack() })
                 }
 
                 // --- Màn hình Tạo tin (Story) ---
@@ -298,9 +305,9 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
                     val uid = bse.arguments?.getString("uid") ?: ""
                     val name = bse.arguments?.getString("name") ?: ""
                     ChatScreen(
-                        otherUid = uid, 
-                        otherName = name, 
-                        viewModel = viewModel(), 
+                        otherUid = uid,
+                        otherName = name,
+                        viewModel = viewModel(),
                         onBack = { navController.popBackStack() },
                         onShowInfo = { u, n -> navController.navigate(Screen.ChatInfo.createRoute(u, n)) }
                     )
@@ -317,8 +324,8 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
                     val uid = bse.arguments?.getString("uid") ?: ""
                     val name = bse.arguments?.getString("name") ?: ""
                     ChatInfoScreen(
-                        uid = uid, 
-                        name = name, 
+                        uid = uid,
+                        name = name,
                         onBack = { navController.popBackStack() },
                         onViewProfile = { u -> navController.navigate(Screen.Profile.createRoute(u)) }
                     )
@@ -382,7 +389,11 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
 
                 // --- Màn hình Cài đặt ---
                 composable(Screen.Settings.route) {
-                    SettingsScreen(onBack = { navController.popBackStack() }, onNavigateToAdmin = {})
+                    SettingsScreen(
+                        onBack = { navController.popBackStack() },
+                        onNavigateToAdmin = {},
+                        onNavigateToPremium = { navController.navigate(Screen.Premium.route) } // TRUYỀN LAMBDA ĐIỀU HƯỚNG
+                    )
                 }
 
                 // --- Màn hình Tìm kiếm ---
