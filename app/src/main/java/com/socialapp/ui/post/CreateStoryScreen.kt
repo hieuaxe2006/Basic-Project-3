@@ -54,7 +54,7 @@ fun CreateStoryScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(t("create_story"), fontWeight = FontWeight.Bold, color = Color.White) },
+                title = { Text(t("create_story_title"), fontWeight = FontWeight.Bold, color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
@@ -105,7 +105,7 @@ fun StoryCreator(
     isLoading: Boolean
 ) {
     val colors = listOf("#1877F2", "#F44336", "#9C27B0", "#4CAF50", "#FF9800", "#000000")
-    
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -119,7 +119,6 @@ fun StoryCreator(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-            // Overlay for text
             Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)))
         }
 
@@ -144,22 +143,20 @@ fun StoryCreator(
             )
         )
 
-        // Bottom Controls
         Column(
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Visibility Selector
             Row(
                 modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(16.dp)).padding(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 val visibilityOptions = listOf(
-                    Triple("public", Icons.Default.Public, "Công khai"),
-                    Triple("friends", Icons.Default.Group, "Bạn bè"),
-                    Triple("private", Icons.Default.Lock, "Chỉ mình tôi")
+                    Triple("public", Icons.Default.Public, t("public")),
+                    Triple("friends", Icons.Default.Group, t("friends")),
+                    Triple("private", Icons.Default.Lock, t("only_me"))
                 )
-                
+
                 visibilityOptions.forEach { (v, icon, label) ->
                     val isSelected = visibility == v
                     Row(
@@ -176,10 +173,9 @@ fun StoryCreator(
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Color selectors
             if (selectedImageUri == null) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -200,9 +196,9 @@ fun StoryCreator(
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Button(
                 onClick = onPost,
                 enabled = (text.isNotBlank() || selectedImageUri != null) && !isLoading,

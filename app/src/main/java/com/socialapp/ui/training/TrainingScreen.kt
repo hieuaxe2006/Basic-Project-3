@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.socialapp.utils.t
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -27,12 +28,12 @@ import kotlinx.coroutines.launch
 @Composable
 fun TrainingScreen() {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Muscle Plans", "Daily Routines", "AI Personal Plan")
+    val tabs = listOf(t("muscle_plans"), t("daily_routines"), t("ai_personal_plan"))
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Training Center", fontWeight = FontWeight.Bold) },
+                title = { Text(t("training_center"), fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.primary
@@ -169,14 +170,14 @@ fun AIPersonalPlanSection() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                "Tạo Lịch Tập AI Cá Nhân Hóa",
+                t("ai_personal_plan"),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "AI sẽ dựa vào các chỉ số Gymer của bạn ở Profile để tạo ra lộ trình tập luyện hiệu quả nhất.",
+                t("ai_plan_desc"),
                 textAlign = TextAlign.Center,
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -196,7 +197,7 @@ fun AIPersonalPlanSection() {
                 if (isLoading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
-                    Text("Tạo Lịch Tập Ngay")
+                    Text(t("generate_ai_plan_btn"))
                 }
             }
         } else {
@@ -205,7 +206,7 @@ fun AIPersonalPlanSection() {
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Lịch tập đề xuất từ AI:", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
+                    Text(t("ai_suggested_plan"), fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(generatedPlan!!, fontSize = 16.sp, lineHeight = 24.sp)
                     Spacer(modifier = Modifier.weight(1f))
@@ -214,7 +215,7 @@ fun AIPersonalPlanSection() {
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                     ) {
-                        Text("Tạo Lại")
+                        Text(t("regenerate_btn"))
                     }
                 }
             }

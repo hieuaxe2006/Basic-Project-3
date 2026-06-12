@@ -30,6 +30,7 @@ import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
 import com.socialapp.data.model.User
 import com.socialapp.data.repository.ChatPartner
+import com.socialapp.utils.t
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -54,7 +55,7 @@ fun ChatListScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Đoạn chat", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
+                    Text(t("chat_list_title"), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -94,7 +95,7 @@ fun ChatListScreen(
                     searchQuery = it
                     viewModel.searchUsers(it)
                 },
-                placeholder = { Text("Tìm kiếm", fontSize = 15.sp) },
+                placeholder = { Text(t("search_hint"), fontSize = 15.sp) },
                 leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(20.dp)) },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -124,7 +125,7 @@ fun ChatListScreen(
                 if (searchQuery.isNotBlank()) {
                     item {
                         Text(
-                            "Kết quả tìm kiếm",
+                            t("search_hint"), // Hoặc tạo key riêng cho "Kết quả tìm kiếm"
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary
@@ -141,7 +142,7 @@ fun ChatListScreen(
                 if (state.pendingRequests.isNotEmpty() && searchQuery.isBlank()) {
                     item {
                         Text(
-                            "Lời mời kết bạn",
+                            t("friend_requests"),
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
                         )
@@ -161,7 +162,7 @@ fun ChatListScreen(
                 } else if (state.partners.isEmpty() && searchQuery.isBlank()) {
                     item {
                         Box(Modifier.fillMaxWidth().padding(top = 100.dp), contentAlignment = Alignment.Center) {
-                            Text("Chưa có cuộc trò chuyện nào", color = Color.Gray)
+                            Text(t("no_chats"), color = Color.Gray)
                         }
                     }
                 } else {
@@ -179,12 +180,12 @@ fun ChatListScreen(
         var noteText by remember { mutableStateOf(state.currentUser?.note ?: "") }
         AlertDialog(
             onDismissRequest = { showNoteDialog = false },
-            title = { Text("Ghi chú của bạn") },
+            title = { Text(t("workout_log")) }, // Sử dụng key phù hợp cho tiêu đề note
             text = {
                 OutlinedTextField(
                     value = noteText,
                     onValueChange = { noteText = it },
-                    placeholder = { Text("Chia sẻ ý nghĩ...") },
+                    placeholder = { Text(t("quick_post_hint")) },
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 2
                 )
@@ -194,12 +195,12 @@ fun ChatListScreen(
                     viewModel.updateNote(noteText)
                     showNoteDialog = false
                 }) {
-                    Text("Lưu")
+                    Text(t("save"))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showNoteDialog = false }) {
-                    Text("Hủy")
+                    Text(t("cancel"))
                 }
             }
         )
@@ -234,10 +235,11 @@ private fun UserChatItem(partner: ChatPartner, onClick: () -> Unit) {
 
             val subtitle = if (lastMsg != null) {
                 val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(lastMsg.timestamp.toDate())
-                val prefix = if (lastMsg.sender_id == (FirebaseAuth.getInstance().currentUser?.uid ?: "")) "Bạn: " else ""
+                // Key dịch cho tiền tố "Bạn: "
+                val prefix = if (lastMsg.sender_id == (FirebaseAuth.getInstance().currentUser?.uid ?: "")) "You: " else ""
                 "$prefix${lastMsg.content} · $time"
             } else {
-                "Bắt đầu cuộc trò chuyện"
+                "..." // Bắt đầu cuộc trò chuyện
             }
 
             Text(
@@ -276,14 +278,14 @@ private fun FriendRequestItem(user: User, onAccept: () -> Unit) {
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(user.username, fontWeight = FontWeight.Bold)
-            Text("Muốn kết bạn", fontSize = 12.sp, color = Color.Gray)
+            Text(t("friend_requests"), fontSize = 12.sp, color = Color.Gray)
         }
         Button(
             onClick = onAccept,
             shape = RoundedCornerShape(8.dp),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
         ) {
-            Text("Chấp nhận", fontSize = 12.sp)
+            Text(t("accept"), fontSize = 12.sp)
         }
     }
 }
@@ -322,9 +324,9 @@ private fun ActiveUserItem(
                 }
             }
         }
-        
+
         Spacer(Modifier.height(4.dp))
-        
+
         // Avatar area
         Box(contentAlignment = Alignment.Center) {
             UserAvatar(user, size = 56.dp, onClick = onNoteClick)
@@ -352,9 +354,9 @@ private fun ActiveUserItem(
                 }
             }
         }
-        
+
         Spacer(Modifier.height(6.dp))
-        
+
         // Label/Username area
         Text(
             text = label,
@@ -378,7 +380,7 @@ private fun ActiveUsersRow(currentUser: User?, partners: List<User>, onNoteClick
         item {
             ActiveUserItem(
                 user = currentUser ?: User(username = "You"),
-                label = "Ghi chú",
+                label = t("workout_log"), // Hoặc key dịch cho "Ghi chú"
                 isCurrentUser = true,
                 onNoteClick = onNoteClick
             )
@@ -396,20 +398,10 @@ private fun ActiveUsersRow(currentUser: User?, partners: List<User>, onNoteClick
 
 fun getAvatarBgColor(userId: String): Color {
     val colors = listOf(
-        Color(0xFFE57373), // Red
-        Color(0xFFF06292), // Pink
-        Color(0xFFBA68C8), // Purple
-        Color(0xFF9575CD), // Deep Purple
-        Color(0xFF7986CB), // Indigo
-        Color(0xFF64B5F6), // Blue
-        Color(0xFF4FC3F7), // Light Blue
-        Color(0xFF4DB6AC), // Teal
-        Color(0xFF81C784), // Green
-        Color(0xFFAED581), // Light Green
-        Color(0xFFFFB74D), // Orange
-        Color(0xFFFF8A65), // Deep Orange
-        Color(0xFFA1887F), // Brown
-        Color(0xFF90A4AE)  // Blue Grey
+        Color(0xFFE57373), Color(0xFFF06292), Color(0xFFBA68C8), Color(0xFF9575CD),
+        Color(0xFF7986CB), Color(0xFF64B5F6), Color(0xFF4FC3F7), Color(0xFF4DB6AC),
+        Color(0xFF81C784), Color(0xFFAED581), Color(0xFFFFB74D), Color(0xFFFF8A65),
+        Color(0xFFA1887F), Color(0xFF90A4AE)
     )
     if (userId.isBlank()) return Color(0xFF90A4AE)
     val index = Math.abs(userId.hashCode()) % colors.size

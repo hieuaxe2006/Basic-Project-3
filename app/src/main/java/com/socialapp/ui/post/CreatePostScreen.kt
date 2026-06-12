@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.socialapp.utils.t
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -40,7 +41,7 @@ fun CreatePostScreen(
     viewModel: CreatePostViewModel,
     onBack: () -> Unit,
     onPostCreated: () -> Unit,
-    onNavigateToPremium: () -> Unit // Tham số mới thêm vào
+    onNavigateToPremium: () -> Unit
 ) {
     var content by remember { mutableStateOf("") }
     var showCodeInput by remember { mutableStateOf(false) }
@@ -59,7 +60,7 @@ fun CreatePostScreen(
 
     LaunchedEffect(state.isSuccess) {
         if (state.isSuccess) {
-            Toast.makeText(context, "Đã gửi bài viết, vui lòng chờ Admin duyệt!", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Success", Toast.LENGTH_LONG).show()
             viewModel.reset()
             onPostCreated()
         }
@@ -68,14 +69,14 @@ fun CreatePostScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Tạo bài viết", fontWeight = FontWeight.Bold) },
+                title = { Text(t("create_post_title"), fontWeight = FontWeight.Bold) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
                 actions = {
                     Button(onClick = { viewModel.createPost(content, context) }, enabled = !state.isLoading) {
                         if (state.isLoading) {
                             CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
                         } else {
-                            Text("Đăng")
+                            Text(t("post_btn"))
                         }
                     }
                 }
@@ -92,20 +93,19 @@ fun CreatePostScreen(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Người dùng", fontWeight = FontWeight.Bold)
+                            Text("User", fontWeight = FontWeight.Bold)
                             if (state.selectedTaggedUsers.isNotEmpty()) {
                                 Text(" cùng với ", fontSize = 12.sp)
                                 Text("${state.selectedTaggedUsers[0].username}${if(state.selectedTaggedUsers.size > 1) " và ${state.selectedTaggedUsers.size-1} người khác" else ""}", fontWeight = FontWeight.Bold, color = Color(0xFF1877F2), fontSize = 12.sp)
                             }
                         }
-                        Text("Trạng thái: Chờ duyệt", fontSize = 11.sp, color = Color.Gray)
+                        Text(t("post_status_pending"), fontSize = 11.sp, color = Color.Gray)
                     }
                 }
 
                 Spacer(Modifier.height(16.dp))
-                TextField(value = content, onValueChange = { content = it }, placeholder = { Text("Hôm nay bạn tập gì?") }, modifier = Modifier.fillMaxWidth(), colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent))
+                TextField(value = content, onValueChange = { content = it }, placeholder = { Text(t("quick_post_hint")) }, modifier = Modifier.fillMaxWidth(), colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent))
 
-                // HIỂN THỊ THÔNG BÁO LỖI (Ví dụ: Lỗi giới hạn bài đăng Premium)
                 state.error?.let {
                     Card(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -118,7 +118,6 @@ fun CreatePostScreen(
                                 Text(it, color = MaterialTheme.colorScheme.error, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                             }
 
-                            // Nút chuyển trang Premium
                             if (it.contains("Premium")) {
                                 Spacer(Modifier.height(8.dp))
                                 Button(
@@ -127,7 +126,7 @@ fun CreatePostScreen(
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD700)),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
-                                    Text("NÂNG CẤP PREMIUM NGAY", color = Color.Black, fontWeight = FontWeight.Bold)
+                                    Text("UPGRADE PREMIUM", color = Color.Black, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -144,7 +143,7 @@ fun CreatePostScreen(
                             if (state.isAutoTagging) {
                                 CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                             } else {
-                                Text("🤖 AI Gợi ý Tag")
+                                Text("🤖 " + t("ai_suggest_tag"))
                             }
                         },
                         enabled = content.isNotBlank() && !state.isAutoTagging
@@ -155,7 +154,7 @@ fun CreatePostScreen(
                             if (state.isAnalyzingAi) {
                                 CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                             } else {
-                                Text("🤖 AI Phân tích bài")
+                                Text("🤖 " + t("ai_analyze_post"))
                             }
                         },
                         enabled = content.isNotBlank() && !state.isAnalyzingAi
@@ -174,7 +173,7 @@ fun CreatePostScreen(
                                 Text("🤖", fontSize = 16.sp)
                                 Spacer(Modifier.width(8.dp))
                                 Text(
-                                    text = "AI Phân tích & Trả lời:",
+                                    text = "AI Analysis:",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp,
                                     color = Color(0xFF00E676)
@@ -198,12 +197,12 @@ fun CreatePostScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Nhật ký tập luyện", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text(t("workout_log"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
 
                             var expanded by remember { mutableStateOf(false) }
                             Box {
                                 Text(
-                                    text = "Loại: $selectedLang ▾",
+                                    text = "Type: $selectedLang ▾",
                                     color = Color.LightGray,
                                     fontSize = 13.sp,
                                     modifier = Modifier.clickable { expanded = true }
@@ -226,7 +225,7 @@ fun CreatePostScreen(
                         TextField(
                             value = codeInput,
                             onValueChange = { codeInput = it; viewModel.updateCode(it, selectedLang) },
-                            placeholder = { Text("VD:\nBench Press - 4x10 @ 80kg\nSquat - 5x5 @ 100kg\n// Thêm ghi chú...", color = Color.Gray) },
+                            placeholder = { Text("Bench Press - 4x10 @ 80kg...", color = Color.Gray) },
                             modifier = Modifier.fillMaxWidth().height(150.dp),
                             textStyle = TextStyle(fontFamily = FontFamily.Monospace, color = Color.White),
                             colors = TextFieldDefaults.colors(
@@ -248,7 +247,7 @@ fun CreatePostScreen(
 
             Surface(tonalElevation = 8.dp, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Thêm vào bài viết của bạn", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(t("add_to_your_post"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Spacer(Modifier.height(16.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
                         IconButton(onClick = { imagePicker.launch("image/*") }) { Icon(Icons.Outlined.Image, null, tint = Color(0xFF45BD62)) }
@@ -263,7 +262,7 @@ fun CreatePostScreen(
     if (showTagSheet) {
         ModalBottomSheet(onDismissRequest = { showTagSheet = false }) {
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp).heightIn(max = 400.dp)) {
-                Text("Gắn thẻ bạn bè", fontWeight = FontWeight.Bold)
+                Text(t("tag_friends"), fontWeight = FontWeight.Bold)
                 if (state.isLoadingFriends) Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 LazyColumn {
                     items(state.friends) { friend ->
@@ -273,7 +272,7 @@ fun CreatePostScreen(
                         }
                     }
                 }
-                Button(onClick = { showTagSheet = false }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) { Text("Xong") }
+                Button(onClick = { showTagSheet = false }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) { Text(t("done")) }
             }
         }
     }

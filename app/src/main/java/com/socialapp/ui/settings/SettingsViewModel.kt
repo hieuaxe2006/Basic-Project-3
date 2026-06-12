@@ -18,25 +18,25 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     var isDarkMode by mutableStateOf(prefs.getBoolean("dark_mode", false))
         private set
+
     var privateAccount by mutableStateOf(prefs.getBoolean("private_account", false))
-        private set
-    var isPremium by mutableStateOf(false)
-        private set
-    var isAdmin by mutableStateOf(false)
         private set
 
     var language by mutableStateOf(prefs.getString("language", "vi") ?: "vi")
         private set
 
-    init { observeUserSettings() }
+    var isPremium by mutableStateOf(false)
+        private set
 
-    // Lắng nghe dữ liệu người dùng thời gian thực
+    init {
+        observeUserSettings()
+    }
+
     private fun observeUserSettings() {
         val uid = userRepo.currentUid ?: return
         viewModelScope.launch {
             userRepo.getUserSnapshot(uid).collect { user ->
                 isPremium = user.is_premium
-                isAdmin = user.role == "admin"
                 privateAccount = user.is_private
             }
         }
@@ -49,20 +49,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun togglePrivateAccount(enabled: Boolean) {
         viewModelScope.launch {
-            repo.updatePrivateStatus(enabled).onSuccess { privateAccount = enabled }
-        }
-    }
-
-    // Khóa chức năng toggle premium nếu đã là true (Không cho hủy)
-    fun togglePremium(enabled: Boolean) {
-        if (isPremium) return // Nếu đã là premium thì không cho phép gạt Switch về false
-        viewModelScope.launch {
-            repo.updatePremiumStatus(enabled).onSuccess { isPremium = enabled }
+            repo.updatePrivateStatus(enabled).onSuccess {
+                privateAccount = enabled
+            }
         }
     }
 
     fun setAppLanguage(lang: String) {
         language = lang
         prefs.edit().putString("language", lang).apply()
+        // Lưu ý: MainActivity sẽ lắng nghe sự thay đổi này qua SharedPreferences
     }
 }

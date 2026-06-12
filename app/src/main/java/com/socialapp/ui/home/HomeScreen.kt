@@ -121,7 +121,7 @@ fun HomeScreen(
             val layoutInfo = listState.layoutInfo
             val totalItemsNumber = layoutInfo.totalItemsCount
             val lastVisibleItemIndex = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
-            
+
             lastVisibleItemIndex > 0 && lastVisibleItemIndex >= totalItemsNumber - 3
         }
     }
@@ -233,7 +233,7 @@ fun HomeScreen(
                             OutlinedTextField(
                                 value = searchQuery,
                                 onValueChange = { searchQuery = it },
-                                placeholder = { Text("Tìm kiếm...") },
+                                placeholder = { Text(t("search_hint")) },
                                 modifier = Modifier
                                     .weight(1f)
                                     .padding(vertical = 4.dp),
@@ -515,13 +515,13 @@ fun CreateStoryItem(user: User?, onClick: () -> Unit) {
                     Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(40.dp), tint = Color.Gray)
                 }
             }
-            
+
             Box(
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(60.dp).background(MaterialTheme.colorScheme.surface),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "Tạo tin",
+                    t("create_story"),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 16.dp)
@@ -571,7 +571,7 @@ fun StoryItem(story: Story, user: User?, onClick: (String) -> Unit) {
                     contentScale = ContentScale.Crop
                 )
             }
-            
+
             // Gradient overlay for better text readability
             Box(
                 modifier = Modifier.fillMaxSize().background(
@@ -615,7 +615,7 @@ fun QuickCreatePostBar(onProfile: (String?) -> Unit, onCreate: () -> Unit, user:
             UserAvatar(user = user ?: User(id = "", username = "?"), size = 40.dp, onClick = { onProfile(null) })
             Surface(onClick = onCreate, modifier = Modifier.weight(1f).padding(horizontal = 12.dp).height(36.dp), shape = RoundedCornerShape(20.dp), color = Color.Transparent, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                 Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.padding(horizontal = 16.dp)) {
-                    Text("Hôm nay tập gì?", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+                    Text(t("quick_post_hint"), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                 }
             }
             IconButton(onClick = onCreate) {

@@ -15,6 +15,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.socialapp.utils.t
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,10 +32,10 @@ fun RegisterScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Đăng ký", fontWeight = FontWeight.Bold) },
+                title = { Text(t("register_title"), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateToLogin) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -48,14 +49,14 @@ fun RegisterScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Tham gia GymHub",
+                text = t("register_title"),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            
+
             Text(
-                text = "Bắt đầu hành trình thể hình của bạn.",
+                text = t("register_subtitle"),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 24.dp)
@@ -64,7 +65,7 @@ fun RegisterScreen(
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
-                placeholder = { Text("Họ tên") },
+                placeholder = { Text(t("full_name_hint")) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp)
@@ -75,7 +76,7 @@ fun RegisterScreen(
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                placeholder = { Text("Email") },
+                placeholder = { Text(t("email_hint")) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -87,7 +88,7 @@ fun RegisterScreen(
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                placeholder = { Text("Mật khẩu mới") },
+                placeholder = { Text(t("password_hint")) },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 singleLine = true,
@@ -100,7 +101,7 @@ fun RegisterScreen(
             OutlinedTextField(
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it },
-                placeholder = { Text("Xác nhận mật khẩu") },
+                placeholder = { Text(t("confirm_password_hint")) },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 singleLine = true,
@@ -121,10 +122,9 @@ fun RegisterScreen(
 
             Button(
                 onClick = {
-                    if (password != confirmPassword) {
-                        return@Button
+                    if (password == confirmPassword) {
+                        viewModel.register(username, email, password)
                     }
-                    viewModel.register(username, email, password)
                 },
                 enabled = !state.isLoading
                         && username.isNotBlank()
@@ -138,14 +138,14 @@ fun RegisterScreen(
                 if (state.isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
                 } else {
-                    Text("Đăng ký", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(t("register_btn"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
             }
 
             Spacer(Modifier.height(16.dp))
-            
+
             Text(
-                text = "Bằng cách nhấp vào Đăng ký, bạn đồng ý với Điều khoản, Chính sách dữ liệu và Chính sách cookie của chúng tôi.",
+                text = t("register_footer"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 8.dp)

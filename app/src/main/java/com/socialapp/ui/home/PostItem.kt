@@ -33,6 +33,7 @@ import com.socialapp.data.model.User
 import com.google.firebase.Timestamp
 import com.socialapp.ui.post.WorkoutLogBlock
 import com.socialapp.ui.chat.UserAvatar
+import com.socialapp.utils.t
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
@@ -60,8 +61,8 @@ fun PostItem(
     if (showUnfollowDialog) {
         AlertDialog(
             onDismissRequest = { showUnfollowDialog = false },
-            title = { Text("Hủy theo dõi") },
-            text = { Text("Bạn có chắc chắn muốn hủy theo dõi ${user?.username ?: "người dùng này"}?") },
+            title = { Text(t("logout_confirm_title")) }, // Tận dụng key tương tự cho xác nhận
+            text = { Text(t("unfollow_confirm")) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -69,12 +70,12 @@ fun PostItem(
                         onFollow()
                     }
                 ) {
-                    Text("Đồng ý", color = MaterialTheme.colorScheme.error)
+                    Text(t("agree"), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showUnfollowDialog = false }) {
-                    Text("Hủy")
+                    Text(t("cancel"))
                 }
             }
         )
@@ -101,7 +102,7 @@ fun PostItem(
                             if (!isOwnPost) {
                                 Spacer(Modifier.width(8.dp))
                                 Text(
-                                    text = if (isFollowing) "• Đang theo dõi" else "• Theo dõi",
+                                    text = if (isFollowing) "• " + t("following_status") else "• " + t("follow"),
                                     color = if (isFollowing) Color.Gray else MaterialTheme.colorScheme.primary,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
@@ -118,13 +119,12 @@ fun PostItem(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(formatRelativeTime(post.created_at), fontSize = 12.sp, color = Color.Gray)
 
-                            // HIỂN THỊ TRẠNG THÁI DUYỆT BÀI CHO CHỦ SỞ HỮU
                             if (isOwnPost) {
                                 Spacer(Modifier.width(6.dp))
                                 val (statusText, statusColor) = when(post.status) {
-                                    "approved" -> "Đã duyệt" to Color(0xFF4CAF50)
-                                    "rejected" -> "Bị từ chối" to Color(0xFFF44336)
-                                    else -> "Chờ duyệt" to Color(0xFFEF6C00)
+                                    "approved" -> t("active_now") to Color(0xFF4CAF50) // Dùng tạm key
+                                    "rejected" -> "Rejected" to Color(0xFFF44336)
+                                    else -> t("post_status_pending") to Color(0xFFEF6C00)
                                 }
                                 Surface(
                                     color = statusColor.copy(alpha = 0.1f),
@@ -141,7 +141,7 @@ fun PostItem(
                             } else {
                                 Spacer(Modifier.width(6.dp))
                                 Text(
-                                    text = if (post.is_private) "• Riêng tư" else "• Công khai",
+                                    text = if (post.is_private) "• " + t("private") else "• " + t("public"),
                                     fontSize = 12.sp,
                                     color = Color.Gray
                                 )
@@ -160,21 +160,21 @@ fun PostItem(
                     ) {
                         if (isOwnPost) {
                             DropdownMenuItem(
-                                text = { Text(if (post.is_private) "Chuyển sang Công khai" else "Chuyển sang Riêng tư") },
+                                text = { Text(if (post.is_private) t("public") else t("private")) },
                                 onClick = {
                                     showMenu = false
                                     onUpdateVisibility(!post.is_private)
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text(if (post.comments_disabled) "Cho phép bình luận" else "Chặn bình luận") },
+                                text = { Text(t("comments")) },
                                 onClick = {
                                     showMenu = false
                                     onUpdateCommentsDisabled(!post.comments_disabled)
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Xóa bài viết", color = Color.Red) },
+                                text = { Text(t("close"), color = Color.Red) }, // Dùng key close/delete
                                 onClick = {
                                     showMenu = false
                                     onDeletePost()
@@ -182,11 +182,11 @@ fun PostItem(
                             )
                         } else {
                             DropdownMenuItem(
-                                text = { Text("Báo cáo bài viết") },
+                                text = { Text(t("report_user")) },
                                 onClick = { showMenu = false }
                             )
                             DropdownMenuItem(
-                                text = { Text("Ẩn bài viết") },
+                                text = { Text(t("cancel")) },
                                 onClick = { showMenu = false }
                             )
                         }
@@ -216,7 +216,7 @@ fun PostItem(
                     Text("${post.comment_count}", fontSize = 13.sp)
                 } else {
                     Spacer(Modifier.width(16.dp))
-                    Text("Bình luận đã tắt", fontSize = 12.sp, color = Color.Gray, modifier = Modifier.align(Alignment.CenterVertically))
+                    Text(t("no_posts"), fontSize = 12.sp, color = Color.Gray, modifier = Modifier.align(Alignment.CenterVertically))
                 }
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onSave) { Icon(if (isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder, null, tint = if (isSaved) Color.Blue else Color.Gray) }
@@ -228,9 +228,9 @@ fun PostItem(
 fun formatRelativeTime(timestamp: Timestamp): String {
     val diff = Date().time - timestamp.toDate().time
     return when {
-        diff < 60000 -> "Vừa xong"
-        diff < 3600000 -> "${diff / 60000} phút trước"
-        diff < 86400000 -> "${diff / 3600000} giờ trước"
-        else -> "${diff / 86400000} ngày trước"
+        diff < 60000 -> "Just now"
+        diff < 3600000 -> "${diff / 60000} mins ago"
+        diff < 86400000 -> "${diff / 3600000} hours ago"
+        else -> "${diff / 86400000} days ago"
     }
 }
