@@ -19,27 +19,31 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.socialapp.data.repository.UserRepository
 import com.socialapp.navigation.AppNavigation
 import com.socialapp.ui.theme.GymHubTheme
+import com.socialapp.utils.LocalLanguage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Composable
-fun rememberDarkModePreference(): Boolean {
+fun rememberAppPreferences(): Pair<Boolean, String> {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings_prefs", Context.MODE_PRIVATE)
     val systemTheme = isSystemInDarkTheme()
+
     var isDark by remember { mutableStateOf(prefs.getBoolean("dark_mode", systemTheme)) }
+    var language by remember { mutableStateOf(prefs.getString("language", "vi") ?: "vi") }
 
     DisposableEffect(prefs) {
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
-            if (key == "dark_mode") {
-                isDark = sharedPreferences.getBoolean("dark_mode", systemTheme)
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
+            when (key) {
+                "dark_mode" -> isDark = p.getBoolean("dark_mode", systemTheme)
+                "language" -> language = p.getString("language", "vi") ?: "vi"
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
-    return isDark
+    return Pair(isDark, language)
 }
 
 class MainActivity : ComponentActivity() {
@@ -48,7 +52,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            val isDark = rememberDarkModePreference()
+            val (isDark, currentLang) = rememberAppPreferences()
             val context = LocalContext.current
 
             DisposableEffect(isDark) {
@@ -65,22 +69,17 @@ class MainActivity : ComponentActivity() {
                 onDispose {}
             }
 
-            // Xin quyền cho Android 13+
             val permissionLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.RequestPermission()
-            ) { isGranted ->
-                // Xử lý nếu cần
-            }
+            ) { _ -> }
 
             LaunchedEffect(Unit) {
-                // Kiểm tra và xin quyền POST_NOTIFICATIONS
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                         permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
                 }
 
-                // Lấy FCM Token và cập nhật lên Firestore (chỉ khi đã đăng nhập)
                 val repo = UserRepository()
                 if (repo.currentUid != null) {
                     FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
@@ -94,8 +93,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            GymHubTheme(darkTheme = isDark) {
-                AppNavigation()
+            // BAO BỌC TOÀN BỘ APP TRONG PROVIDER NGÔN NGỮ
+            CompositionLocalProvider(LocalLanguage provides currentLang) {
+                GymHubTheme(darkTheme = isDark) {
+                    AppNavigation()
+                }
             }
         }
     }

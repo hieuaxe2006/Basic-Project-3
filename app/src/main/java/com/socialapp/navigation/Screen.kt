@@ -36,5 +36,5 @@ sealed class Screen(val route: String) {
     }
     object Admin : Screen("admin")
     object Notifications : Screen("notifications")
-    object Premium : Screen("premium") // Màn hình mới
+    object Premium : Screen("premium")
 }

@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.socialapp.data.model.Message
+import com.socialapp.utils.t
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,8 +54,8 @@ fun ChatScreen(
         uri?.let { viewModel.sendImage(otherUid, it, context) }
     }
 
-    LaunchedEffect(otherUid) { 
-        viewModel.startListening(otherUid) 
+    LaunchedEffect(otherUid) {
+        viewModel.startListening(otherUid)
     }
 
     LaunchedEffect(state.messages.size) {
@@ -84,7 +85,7 @@ fun ChatScreen(
                         Column {
                             Text(otherName, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 16.sp))
                             if (!state.isBlockedByMe && !state.isBlockedByOther) {
-                                Text("Đang hoạt động", style = MaterialTheme.typography.bodySmall, color = Color(0xFF4CAF50), fontWeight = FontWeight.Medium)
+                                Text(t("active_now"), style = MaterialTheme.typography.bodySmall, color = Color(0xFF4CAF50), fontWeight = FontWeight.Medium)
                             }
                         }
                     }
@@ -96,7 +97,7 @@ fun ChatScreen(
                 },
                 actions = {
                     IconButton(onClick = { onShowInfo(otherUid, otherName) }) {
-                        Icon(Icons.Filled.Info, "Thông tin", tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Filled.Info, "Info", tint = MaterialTheme.colorScheme.primary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -108,7 +109,7 @@ fun ChatScreen(
                     if (state.isUploading) {
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
-                    
+
                     if (state.isBlockedByMe || state.isBlockedByOther) {
                         Box(
                             modifier = Modifier
@@ -119,7 +120,7 @@ fun ChatScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = if (state.isBlockedByMe) "Bạn đã chặn người dùng này. Bỏ chặn để nhắn tin." else "Người dùng này hiện không thể nhận tin nhắn.",
+                                text = if (state.isBlockedByMe) t("you_blocked_user") else t("user_blocked_you"),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.error,
                                 textAlign = TextAlign.Center
@@ -133,13 +134,13 @@ fun ChatScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(onClick = { imagePickerLauncher.launch("image/*") }) {
-                                Icon(Icons.Filled.Photo, "Chọn ảnh", tint = MaterialTheme.colorScheme.primary) 
+                                Icon(Icons.Filled.Photo, "Photo", tint = MaterialTheme.colorScheme.primary)
                             }
-                            
+
                             OutlinedTextField(
                                 value = input,
                                 onValueChange = { input = it },
-                                placeholder = { Text("Tin nhắn", fontSize = 15.sp) },
+                                placeholder = { Text(t("write_comment"), fontSize = 15.sp) }, // Dùng chung key hint
                                 modifier = Modifier
                                     .weight(1f)
                                     .padding(horizontal = 4.dp)
@@ -153,7 +154,7 @@ fun ChatScreen(
                                 ),
                                 singleLine = false
                             )
-                            
+
                             if (input.isNotBlank()) {
                                 IconButton(
                                     onClick = {
@@ -162,11 +163,11 @@ fun ChatScreen(
                                     },
                                     enabled = !state.isSending
                                 ) {
-                                    Icon(Icons.AutoMirrored.Filled.Send, "Gửi", tint = MaterialTheme.colorScheme.primary)
+                                    Icon(Icons.AutoMirrored.Filled.Send, "Send", tint = MaterialTheme.colorScheme.primary)
                                 }
                             } else {
                                 IconButton(onClick = { viewModel.sendMessage(otherUid, "👍") }) {
-                                    Icon(Icons.Filled.ThumbUp, "Like", tint = MaterialTheme.colorScheme.primary) 
+                                    Icon(Icons.Filled.ThumbUp, "Like", tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
                         }
@@ -187,7 +188,7 @@ fun ChatScreen(
                 val isOwn = message.sender_id == viewModel.currentUid
                 val showAvatar = !isOwn && (index == 0 || state.messages[index-1].sender_id != message.sender_id)
                 val isLastInBlock = index == state.messages.size - 1 || state.messages[index+1].sender_id != message.sender_id
-                
+
                 MessageBubble(
                     message = message,
                     isOwn = isOwn,
@@ -202,9 +203,9 @@ fun ChatScreen(
 
 @Composable
 private fun MessageBubble(
-    message: Message, 
-    isOwn: Boolean, 
-    showAvatar: Boolean, 
+    message: Message,
+    isOwn: Boolean,
+    showAvatar: Boolean,
     isLastInBlock: Boolean,
     otherName: String
 ) {
@@ -224,8 +225,8 @@ private fun MessageBubble(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = otherName.take(1).uppercase(), 
-                            fontSize = 10.sp, 
+                            text = otherName.take(1).uppercase(),
+                            fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }

@@ -28,6 +28,7 @@ import coil.compose.AsyncImage
 import com.socialapp.data.model.Comment
 import com.socialapp.data.model.User
 import com.socialapp.ui.home.formatRelativeTime
+import com.socialapp.utils.t
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,7 +48,7 @@ fun CommentScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Bình luận", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+                title = { Text(t("comments"), fontWeight = FontWeight.Bold, fontSize = 18.sp) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -65,7 +66,7 @@ fun CommentScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                "Đang trả lời @$replyToUsername",
+                                t("reply") + " @$replyToUsername",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.weight(1f)
@@ -87,7 +88,7 @@ fun CommentScreen(
                             TextField(
                                 value = input,
                                 onValueChange = { input = it },
-                                placeholder = { Text("Viết bình luận...", fontSize = 14.sp) },
+                                placeholder = { Text(t("write_comment"), fontSize = 14.sp) },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = TextFieldDefaults.colors(
                                     focusedContainerColor = Color.Transparent,
@@ -145,7 +146,7 @@ fun CommentScreen(
             } else if (state.comments.isEmpty()) {
                 item {
                     Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                        Text("Chưa có bình luận nào. Hãy là người đầu tiên!", color = Color.Gray)
+                        Text(t("no_posts"), color = Color.Gray)
                     }
                 }
             } else {
@@ -160,10 +161,10 @@ fun CommentScreen(
                         onLike = { viewModel.toggleCommentLike(comment.id) },
                         onReply = {
                             replyToId = comment.id
-                            replyToUsername = state.userMap[comment.user_id]?.username ?: "người dùng"
+                            replyToUsername = state.userMap[comment.user_id]?.username ?: "user"
                         }
                     )
-                    
+
                     // Display replies
                     replyMap[comment.id]?.forEach { reply ->
                         CommentItem(
@@ -173,7 +174,7 @@ fun CommentScreen(
                             onLike = { viewModel.toggleCommentLike(reply.id) },
                             onReply = {
                                 replyToId = comment.id
-                                replyToUsername = state.userMap[reply.user_id]?.username ?: "người dùng"
+                                replyToUsername = state.userMap[reply.user_id]?.username ?: "user"
                             },
                             isReply = true
                         )
@@ -208,7 +209,7 @@ private fun PostHeaderView(
                 }
                 Spacer(Modifier.width(10.dp))
                 Column {
-                    Text(user?.username ?: "Người dùng", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(user?.username ?: "User", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Text(formatRelativeTime(post.created_at), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
             }
@@ -258,20 +259,20 @@ private fun CommentItem(
                 }
             }
         }
-        
+
         Spacer(Modifier.width(8.dp))
-        
+
         Column {
             val isPremium = user?.is_premium == true
             Surface(
-                color = if (isPremium) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f) 
-                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                color = if (isPremium) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                 shape = RoundedCornerShape(16.dp),
                 border = if (isPremium) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF5722)) else null
             ) {
                 Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                     Text(
-                        text = if (isPremium) "${user?.username ?: "Người dùng"} 👑" else (user?.username ?: "Người dùng"),
+                        text = if (isPremium) "${user?.username ?: "User"} 👑" else (user?.username ?: "User"),
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp,
                         color = if (isPremium) Color(0xFFFF5722) else MaterialTheme.colorScheme.onSurface
@@ -279,13 +280,13 @@ private fun CommentItem(
                     Text(comment.content, style = MaterialTheme.typography.bodyMedium, fontSize = 14.sp)
                 }
             }
-            
+
             Row(
                 modifier = Modifier.padding(start = 8.dp, top = 2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Thích",
+                    t("like"),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (isLiked) MaterialTheme.colorScheme.primary else Color.Gray,
                     fontWeight = if (isLiked) FontWeight.Bold else FontWeight.Normal,
@@ -293,12 +294,12 @@ private fun CommentItem(
                 )
                 Spacer(Modifier.width(16.dp))
                 Text(
-                    "Phản hồi",
+                    t("reply"),
                     style = MaterialTheme.typography.labelSmall,
                     color = Color.Gray,
                     modifier = Modifier.clickable { onReply() }
                 )
-                
+
                 if (comment.like_count > 0) {
                     Spacer(Modifier.width(16.dp))
                     Icon(Icons.Default.Favorite, null, tint = Color(0xFFE41E3F), modifier = Modifier.size(10.dp))

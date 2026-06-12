@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.socialapp.utils.t
 import java.text.NumberFormat
 import java.util.*
 
@@ -28,15 +29,16 @@ fun AdminDashboardScreen(
     vm: AdminViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Thống kê", "Người dùng", "Bài đăng")
+    // Đồng bộ các tab
+    val tabs = listOf("Stats", "Users", "Posts")
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Quản trị hệ thống") },
+                title = { Text("Admin Dashboard") },
                 actions = {
                     IconButton(onClick = onLogout) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Đăng xuất")
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -74,11 +76,11 @@ fun StatsTab(state: AdminState) {
     Column(modifier = Modifier.padding(16.dp)) {
         Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Doanh thu thực tế (Premium)", style = MaterialTheme.typography.titleMedium)
+                Text("Revenue (Premium)", style = MaterialTheme.typography.titleMedium)
                 Text(formattedRevenue, style = MaterialTheme.typography.headlineMedium, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
             }
         }
-        Text("Bảng xếp hạng Follower", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+        Text("Follower Leaderboard", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
         state.topUsers.forEach { user ->
             ListItem(headlineContent = { Text(user.username) }, trailingContent = { Text("${user.followers_count} fl", style = MaterialTheme.typography.bodySmall) })
         }
@@ -95,7 +97,7 @@ fun UsersTab(state: AdminState, onToggleBlock: (String, Boolean) -> Unit) {
                 trailingContent = {
                     Button(onClick = { onToggleBlock(user.id, user.is_blocked) }, colors = ButtonDefaults.buttonColors(containerColor = if (user.is_blocked) Color(0xFF4CAF50) else Color(0xFFD32F2F))) {
                         Icon(if (user.is_blocked) Icons.Default.CheckCircle else Icons.Default.Block, null, Modifier.size(16.dp))
-                        Text(if (user.is_blocked) " Mở" else " Chặn")
+                        Text(if (user.is_blocked) " Unblock" else " Block")
                     }
                 }
             )
@@ -114,20 +116,20 @@ fun PostsTab(
     LazyColumn {
         items(state.posts) { post ->
             val statusColor = when (post.status) {
-                "approved" -> Color(0xFF2E7D32) // Xanh lá
-                "rejected" -> Color(0xFFC62828) // Đỏ
-                else -> Color(0xFFEF6C00) // Cam (Chờ duyệt)
+                "approved" -> Color(0xFF2E7D32)
+                "rejected" -> Color(0xFFC62828)
+                else -> Color(0xFFEF6C00)
             }
             val statusText = when (post.status) {
-                "approved" -> "Đã duyệt"
-                "rejected" -> "Từ chối"
-                else -> "Chờ duyệt"
+                "approved" -> "Approved"
+                "rejected" -> "Rejected"
+                else -> "Pending"
             }
             ListItem(
                 headlineContent = { Text(post.content, maxLines = 2) },
                 supportingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Tác giả ID: ${post.user_id.take(8)}")
+                        Text("Author: ${post.user_id.take(8)}")
                         Surface(
                             color = statusColor.copy(alpha = 0.1f),
                             contentColor = statusColor,
@@ -146,18 +148,18 @@ fun PostsTab(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (post.status == "pending") {
                             IconButton(onClick = { onApprove(post.id) }) {
-                                Icon(Icons.Default.CheckCircle, tint = Color(0xFF2E7D32), contentDescription = "Duyệt")
+                                Icon(Icons.Default.CheckCircle, tint = Color(0xFF2E7D32), contentDescription = "Approve")
                             }
                             IconButton(onClick = { onReject(post.id) }) {
-                                Icon(Icons.Default.Block, tint = Color(0xFFC62828), contentDescription = "Từ chối")
+                                Icon(Icons.Default.Block, tint = Color(0xFFC62828), contentDescription = "Reject")
                             }
                         } else if (post.status == "approved") {
                             IconButton(onClick = { onReject(post.id) }) {
-                                Icon(Icons.Default.Block, tint = Color(0xFFC62828), contentDescription = "Từ chối")
+                                Icon(Icons.Default.Block, tint = Color(0xFFC62828), contentDescription = "Reject")
                             }
                         }
                         IconButton(onClick = { onDelete(post.id) }) {
-                            Icon(Icons.Default.Delete, tint = Color.Red, contentDescription = "Xóa")
+                            Icon(Icons.Default.Delete, tint = Color.Red, contentDescription = "Delete")
                         }
                     }
                 }

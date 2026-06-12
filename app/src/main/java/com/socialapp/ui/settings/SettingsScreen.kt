@@ -76,11 +76,9 @@ fun SettingsScreen(
 
             HorizontalDivider(Modifier.padding(vertical = 16.dp))
 
-            // CARD PREMIUM: THAY ĐỔI MÀU SẮC VÀ KHÔNG CHO HỦY
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    // Nếu đã là premium, bấm vào vẫn xem được info nhưng không mua lại
                     .clickable { onNavigateToPremium() },
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
@@ -103,9 +101,7 @@ fun SettingsScreen(
                             color = Color.White
                         )
                         Text(
-                            text = if (viewModel.isPremium)
-                                "Tài khoản của bạn đã được kích hoạt đặc quyền Hội viên Vàng!"
-                            else "Sử dụng toàn bộ tính năng cao cấp để bứt phá giới hạn bản thân!",
+                            text = if (viewModel.isPremium) "GOLD Active!" else "Unleash your potential!",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.White.copy(alpha = 0.9f)
                         )

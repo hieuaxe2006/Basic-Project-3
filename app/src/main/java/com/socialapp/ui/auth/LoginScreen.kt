@@ -16,6 +16,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.socialapp.utils.t
 
 @Composable
 fun LoginScreen(
@@ -29,15 +30,13 @@ fun LoginScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Background Gym Image
         AsyncImage(
             model = "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800",
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
-        
-        // Dark overlay for readability
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -52,15 +51,15 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "GymHub",
+                text = t("login_title"),
                 style = MaterialTheme.typography.displayMedium,
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
                 fontSize = 42.sp
             )
-            
+
             Text(
-                text = "Cộng đồng thể hình số 1 Việt Nam",
+                text = t("login_subtitle"),
                 style = MaterialTheme.typography.bodyLarge,
                 color = Color.White.copy(alpha = 0.8f),
                 modifier = Modifier.padding(bottom = 32.dp)
@@ -76,7 +75,7 @@ fun LoginScreen(
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
-                        placeholder = { Text("Email hoặc số điện thoại") },
+                        placeholder = { Text(t("email_hint")) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -88,7 +87,7 @@ fun LoginScreen(
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        placeholder = { Text("Mật khẩu") },
+                        placeholder = { Text(t("password_hint")) },
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         singleLine = true,
@@ -117,26 +116,26 @@ fun LoginScreen(
                         if (state.isLoading) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
                         } else {
-                            Text("Đăng nhập", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(t("login_btn"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
                     }
 
                     TextButton(
-                        onClick = { /* Quên mật khẩu? */ },
+                        onClick = { },
                         modifier = Modifier.align(Alignment.CenterHorizontally)
                     ) {
-                        Text("Quên mật khẩu?", color = MaterialTheme.colorScheme.primary)
+                        Text(t("forgot_password"), color = MaterialTheme.colorScheme.primary)
                     }
-                    
+
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    
+
                     Button(
                         onClick = onNavigateToRegister,
                         modifier = Modifier.align(Alignment.CenterHorizontally),
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF42B72A)) // Success green
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF42B72A))
                     ) {
-                        Text("Tạo tài khoản mới", fontWeight = FontWeight.Bold)
+                        Text(t("create_account_btn"), fontWeight = FontWeight.Bold)
                     }
                 }
             }

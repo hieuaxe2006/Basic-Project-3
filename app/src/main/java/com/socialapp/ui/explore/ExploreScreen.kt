@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.socialapp.utils.t
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,7 +28,7 @@ fun ExploreScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Khám phá", fontWeight = FontWeight.Bold) },
+                title = { Text(t("search_hint"), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -49,7 +50,7 @@ fun ExploreScreen(
             }
             state.categories.isEmpty() -> {
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Text("Không tìm thấy chủ đề nào.")
+                    Text(t("no_posts"))
                 }
             }
             else -> {
@@ -98,7 +99,7 @@ private fun CategoryCard(category: Category, onClick: () -> Unit) {
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "${category.postCount} bài viết",
+                text = "${category.postCount} " + t("posts"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

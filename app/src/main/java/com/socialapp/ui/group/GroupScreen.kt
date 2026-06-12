@@ -54,7 +54,7 @@ fun GroupScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(t("groups"), fontWeight = FontWeight.Bold) }
+                title = { Text(t("training_tab"), fontWeight = FontWeight.Bold) }
             )
         }
     ) { padding ->
@@ -69,7 +69,7 @@ fun GroupScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text(t("search_groups")) },
+                placeholder = { Text(t("search_hint")) },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
@@ -106,7 +106,7 @@ fun GroupScreen(
                 }
             } else if (filteredGroups.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(t("no_groups_found"), color = Color.Gray, style = MaterialTheme.typography.bodyLarge)
+                    Text(t("no_posts"), color = Color.Gray, style = MaterialTheme.typography.bodyLarge)
                 }
             } else {
                 LazyColumn(
@@ -186,7 +186,7 @@ fun GroupCard(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "${group.memberCount} ${t("members")} • ${group.postCount} ${t("posts")}",
+                    text = "${group.memberCount} members • ${group.postCount} posts",
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary
@@ -212,7 +212,7 @@ fun GroupCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(Modifier.width(4.dp))
-                    Text(if (isJoined) t("joined") else t("join"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(if (isJoined) "Joined" else t("accept"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

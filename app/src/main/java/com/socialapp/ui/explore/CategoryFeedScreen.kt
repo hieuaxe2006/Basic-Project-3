@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.socialapp.ui.home.PostItem
+import com.socialapp.utils.t
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,7 +49,7 @@ fun CategoryFeedScreen(
             }
         } else if (state.posts.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("Chưa có bài viết nào thuộc chủ đề này")
+                Text(t("no_posts"))
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {

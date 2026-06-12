@@ -49,7 +49,7 @@ fun GroupDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(state.group?.name ?: t("group_details"), fontWeight = FontWeight.Bold) },
+                title = { Text(state.group?.name ?: "Group", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
@@ -118,7 +118,7 @@ fun GroupDetailScreen(
                         Text(group.description, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
                         Spacer(Modifier.height(12.dp))
                         Text(
-                            text = "${group.memberCount} ${t("members")} • ${group.postCount} ${t("posts")}",
+                            text = "${group.memberCount} members • ${group.postCount} posts",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -133,7 +133,7 @@ fun GroupDetailScreen(
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(if (isMember) t("leave_group") else t("join_group"), fontWeight = FontWeight.Bold)
+                            Text(if (isMember) "Leave" else t("accept"), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -155,7 +155,7 @@ fun GroupDetailScreen(
                                     value = postContent,
                                     onValueChange = { postContent = it },
                                     modifier = Modifier.weight(1f),
-                                    placeholder = { Text(t("write_group_post")) },
+                                    placeholder = { Text(t("quick_post_hint")) },
                                     shape = RoundedCornerShape(12.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -187,7 +187,7 @@ fun GroupDetailScreen(
                                 .padding(24.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(t("join_to_post"), color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+                            Text(t("login_subtitle"), color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
@@ -200,7 +200,7 @@ fun GroupDetailScreen(
                                 .padding(48.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(t("no_group_posts"), color = Color.Gray)
+                            Text(t("no_posts"), color = Color.Gray)
                         }
                     }
                 } else {
@@ -262,7 +262,7 @@ fun GroupPostItem(
             Column {
                 Text(author?.username ?: "User", fontWeight = FontWeight.Bold)
                 Text(
-                    t("posted_just_now"),
+                    "Just now",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )

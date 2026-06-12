@@ -105,11 +105,10 @@ fun ProfileScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            state.user?.username ?: t("profile"),
+                            state.user?.username ?: t("profile_tab"),
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp
                         )
-                        // THAY ĐỔI: HIỆN ICON XÁC MINH NẾU LÀ PREMIUM
                         if (state.user?.is_premium == true) {
                             Spacer(Modifier.width(6.dp))
                             Icon(
@@ -131,15 +130,15 @@ fun ProfileScreen(
                 actions = {
                     if (viewModel.isOwnProfile && !state.isEditing) {
                         IconButton(onClick = { showPasswordSheet = true }) {
-                            Icon(Icons.Default.Lock, "Đổi mật khẩu")
+                            Icon(Icons.Default.Lock, "Pass")
                         }
                         IconButton(onClick = { viewModel.toggleEdit() }) {
-                            Icon(Icons.Default.Edit, "Chỉnh sửa")
+                            Icon(Icons.Default.Edit, "Edit")
                         }
                         IconButton(onClick = { showLogoutDialog = true }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ExitToApp,
-                                contentDescription = "Đăng xuất",
+                                contentDescription = "Logout",
                                 tint = MaterialTheme.colorScheme.error
                             )
                         }
@@ -203,8 +202,8 @@ fun ProfileScreen(
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text("Đăng xuất") },
-            text = { Text("Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng không?") },
+            title = { Text(t("logout_confirm_title")) },
+            text = { Text(t("logout_confirm_desc")) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -213,12 +212,12 @@ fun ProfileScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Đăng xuất")
+                    Text(t("logout"))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("Hủy")
+                    Text(t("cancel"))
                 }
             }
         )
@@ -227,7 +226,7 @@ fun ProfileScreen(
     if (showFollowersSheet) {
         ModalBottomSheet(onDismissRequest = { showFollowersSheet = false }) {
             UserListContent(
-                title = "Người theo dõi",
+                title = t("followers"),
                 users = state.followersList,
                 isLoading = state.isListLoading
             )
@@ -236,7 +235,7 @@ fun ProfileScreen(
     if (showFollowingSheet) {
         ModalBottomSheet(onDismissRequest = { showFollowingSheet = false }) {
             UserListContent(
-                title = "Đang theo dõi",
+                title = t("following"),
                 users = state.followingList,
                 isLoading = state.isListLoading
             )
@@ -288,25 +287,25 @@ fun ProfileScreen(
 
         AlertDialog(
             onDismissRequest = { showMetricsDialog = false },
-            title = { Text("Cập nhật chỉ số Gymer") },
+            title = { Text(t("gym_metrics_title")) },
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text("Thông số cơ thể:", fontWeight = FontWeight.Bold)
+                    Text(t("gym_metrics_title") + ":", fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(
                             value = heightText,
                             onValueChange = { heightText = it },
-                            label = { Text("Cao (cm)") },
+                            label = { Text(t("height") + " (cm)") },
                             modifier = Modifier.weight(1f),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                         )
                         OutlinedTextField(
                             value = weightText,
                             onValueChange = { weightText = it },
-                            label = { Text("Nặng (kg)") },
+                            label = { Text(t("weight") + " (kg)") },
                             modifier = Modifier.weight(1f),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                         )
@@ -314,7 +313,7 @@ fun ProfileScreen(
                     OutlinedTextField(
                         value = bodyFatText,
                         onValueChange = { bodyFatText = it },
-                        label = { Text("Tỉ lệ mỡ (%)") },
+                        label = { Text(t("body_fat") + " (%)") },
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
@@ -357,12 +356,12 @@ fun ProfileScreen(
                         showMetricsDialog = false
                     }
                 ) {
-                    Text("Lưu")
+                    Text(t("save"))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showMetricsDialog = false }) {
-                    Text("Hủy")
+                    Text(t("cancel"))
                 }
             }
         )
@@ -405,7 +404,6 @@ private fun ProfileContent(
                         Surface(
                             modifier = Modifier.size(120.dp),
                             shape = CircleShape,
-                            // THAY ĐỔI: VIỀN VÀNG DÀY NẾU LÀ PREMIUM
                             border = if (user.is_premium) BorderStroke(4.dp, Color(0xFFFFD700))
                             else BorderStroke(4.dp, MaterialTheme.colorScheme.surface),
                             shadowElevation = if (user.is_premium) 12.dp else 4.dp
@@ -431,7 +429,6 @@ private fun ProfileContent(
                             }
                         }
 
-                        // THAY ĐỔI: VƯƠNG MIỆN NHỎ GẮN TRÊN AVATAR
                         if (user.is_premium) {
                             Surface(
                                 modifier = Modifier.size(34.dp).align(Alignment.TopEnd),
@@ -464,13 +461,11 @@ private fun ProfileContent(
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
-                        // THAY ĐỔI: VƯƠNG MIỆN CẠNH TÊN
                         if (user.is_premium) {
                             Text(" 👑", fontSize = 24.sp)
                         }
                     }
 
-                    // THAY ĐỔI: NHÃN HIỆU PREMIUM
                     if (user.is_premium) {
                         Surface(
                             color = Color(0xFFFFD700).copy(alpha = 0.15f),
@@ -496,8 +491,8 @@ private fun ProfileContent(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        StatItem("${user.followers_count}", "Người theo dõi", onFollowersClick)
-                        StatItem("${user.following_count}", "Đang theo dõi", onFollowingClick)
+                        StatItem("${user.followers_count}", t("followers"), onFollowersClick)
+                        StatItem("${user.following_count}", t("following"), onFollowingClick)
                     }
 
                     Spacer(Modifier.height(16.dp))
@@ -514,14 +509,14 @@ private fun ProfileContent(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Chỉ số Gymer & Kỷ lục (PR)",
+                                    text = t("gym_metrics_title"),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 if (isOwnProfile) {
                                     Text(
-                                        text = "Cập nhật",
+                                        text = t("update"),
                                         color = MaterialTheme.colorScheme.primary,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.SemiBold,
@@ -534,9 +529,9 @@ private fun ProfileContent(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                GymMetricItem(value = if (user.height > 0) "${user.height.toInt()} cm" else "--", label = "Chiều cao")
-                                GymMetricItem(value = if (user.weight > 0) "${user.weight} kg" else "--", label = "Cân nặng")
-                                GymMetricItem(value = if (user.body_fat > 0) "${user.body_fat}%" else "--", label = "Tỷ lệ mỡ")
+                                GymMetricItem(value = if (user.height > 0) "${user.height.toInt()} cm" else "--", label = t("height"))
+                                GymMetricItem(value = if (user.weight > 0) "${user.weight} kg" else "--", label = t("weight"))
+                                GymMetricItem(value = if (user.body_fat > 0) "${user.body_fat}%" else "--", label = t("body_fat"))
                             }
                             Spacer(Modifier.height(12.dp))
                             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
@@ -545,9 +540,9 @@ private fun ProfileContent(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                GymMetricItem(value = if (user.bench_pr > 0) "${user.bench_pr} kg" else "--", label = "Bench Press")
-                                GymMetricItem(value = if (user.squat_pr > 0) "${user.squat_pr} kg" else "--", label = "Squat")
-                                GymMetricItem(value = if (user.deadlift_pr > 0) "${user.deadlift_pr} kg" else "--", label = "Deadlift")
+                                GymMetricItem(value = if (user.bench_pr > 0) "${user.bench_pr} kg" else "--", label = t("bench_press"))
+                                GymMetricItem(value = if (user.squat_pr > 0) "${user.squat_pr} kg" else "--", label = t("squat"))
+                                GymMetricItem(value = if (user.deadlift_pr > 0) "${user.deadlift_pr} kg" else "--", label = t("deadlift"))
                             }
 
                             if (isOwnProfile && user.is_premium) {
@@ -562,11 +557,11 @@ private fun ProfileContent(
                                     if (viewModel.state.isGeneratingWorkout) {
                                         CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
                                         Spacer(Modifier.width(8.dp))
-                                        Text("AI đang phân tích...", color = Color.White)
+                                        Text(t("ai_analyzing"), color = Color.White)
                                     } else {
                                         Icon(Icons.Default.AutoAwesome, null, tint = Color.Black)
                                         Spacer(Modifier.width(8.dp))
-                                        Text("Tạo Lịch Tập AI Cá Nhân", color = Color.Black, fontWeight = FontWeight.Bold)
+                                        Text(t("ai_workout_btn"), color = Color.Black, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -584,7 +579,7 @@ private fun ProfileContent(
                         ) {
                             Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Chỉnh sửa trang cá nhân", fontWeight = FontWeight.Bold)
+                            Text(t("edit_profile"), fontWeight = FontWeight.Bold)
                         }
                     } else {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -599,10 +594,10 @@ private fun ProfileContent(
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 val (icon, text) = when(friendStatus) {
-                                    "friends" -> Icons.Default.Person to "Bạn bè"
-                                    "requested" -> Icons.Default.PersonOutline to "Đã gửi"
-                                    "pending_approval" -> Icons.Default.PersonAdd to "Chấp nhận"
-                                    else -> Icons.Default.PersonAdd to "Thêm bạn"
+                                    "friends" -> Icons.Default.Person to "Friends"
+                                    "requested" -> Icons.Default.PersonOutline to "Requested"
+                                    "pending_approval" -> Icons.Default.PersonAdd to "Accept"
+                                    else -> Icons.Default.PersonAdd to "Add"
                                 }
                                 Icon(icon, null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
@@ -617,7 +612,7 @@ private fun ProfileContent(
                             ) {
                                 Icon(Icons.AutoMirrored.Filled.Chat, null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text("Nhắn tin")
+                                Text("Message")
                             }
                         }
                     }
@@ -738,26 +733,26 @@ private fun EditProfileContent(
     var trainingRegime by remember(user) { mutableStateOf(user.trainingRegime) }
 
     Column(modifier = modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState())) {
-        Text("Chỉnh sửa thông tin", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(t("edit_profile"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
-        OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Tên hiển thị") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(16.dp))
-        OutlinedTextField(value = bio, onValueChange = { bio = it }, label = { Text("Tiểu sử") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+        OutlinedTextField(value = bio, onValueChange = { bio = it }, label = { Text("Bio") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
         Spacer(Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(value = ageText, onValueChange = { ageText = it }, label = { Text("Tuổi") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-            OutlinedTextField(value = birthday, onValueChange = { birthday = it }, label = { Text("Sinh nhật") }, modifier = Modifier.weight(1f))
+            OutlinedTextField(value = ageText, onValueChange = { ageText = it }, label = { Text(t("age")) }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            OutlinedTextField(value = birthday, onValueChange = { birthday = it }, label = { Text(t("birthday")) }, modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(16.dp))
-        OutlinedTextField(value = hometown, onValueChange = { hometown = it }, label = { Text("Quê quán") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = hometown, onValueChange = { hometown = it }, label = { Text(t("hometown")) }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(16.dp))
-        OutlinedTextField(value = hobbies, onValueChange = { hobbies = it }, label = { Text("Sở thích") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = hobbies, onValueChange = { hobbies = it }, label = { Text(t("hobbies")) }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(16.dp))
-        OutlinedTextField(value = trainingRegime, onValueChange = { trainingRegime = it }, label = { Text("Chế độ tập luyện") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = trainingRegime, onValueChange = { trainingRegime = it }, label = { Text(t("regime")) }, modifier = Modifier.fillMaxWidth())
 
         Spacer(Modifier.height(32.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Hủy") }
+            OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text(t("cancel")) }
             Button(
                 onClick = {
                     val age = ageText.toIntOrNull() ?: 0
@@ -766,7 +761,7 @@ private fun EditProfileContent(
                 modifier = Modifier.weight(1f),
                 enabled = !isSaving
             ) {
-                if (isSaving) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White) else Text("Lưu")
+                if (isSaving) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White) else Text(t("save"))
             }
         }
     }
@@ -784,12 +779,12 @@ private fun ShareSheetContent(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.8f).padding(16.dp)) {
-        Text("Gửi bài viết", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text("Share to", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it; onSearch(it) },
-            placeholder = { Text("Tìm kiếm bạn bè...") },
+            placeholder = { Text(t("search_friends_hint")) },
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = { Icon(Icons.Default.Search, null) },
             shape = RoundedCornerShape(24.dp)
@@ -849,22 +844,22 @@ private fun ChangePasswordContent(isLoading: Boolean, success: Boolean, error: S
     var new by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }
     Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Đổi mật khẩu", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(t("change_password"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
         if (success) {
             Icon(Icons.Default.CheckCircle, null, tint = Color.Green, modifier = Modifier.size(64.dp))
-            Text("Thành công!", modifier = Modifier.padding(top = 16.dp))
-            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth().padding(top = 24.dp)) { Text("Đóng") }
+            Text(t("success"), modifier = Modifier.padding(top = 16.dp))
+            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth().padding(top = 24.dp)) { Text(t("close")) }
         } else {
-            OutlinedTextField(value = current, onValueChange = { current = it }, label = { Text("Mật khẩu hiện tại") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = current, onValueChange = { current = it }, label = { Text(t("current_password")) }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
-            OutlinedTextField(value = new, onValueChange = { new = it }, label = { Text("Mật khẩu mới") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = new, onValueChange = { new = it }, label = { Text(t("new_password")) }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
-            OutlinedTextField(value = confirm, onValueChange = { confirm = it }, label = { Text("Xác nhận mật khẩu") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = confirm, onValueChange = { confirm = it }, label = { Text(t("confirm_password")) }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
             if (error != null) Text(error, color = Color.Red, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(32.dp))
             Button(onClick = { onSubmit(current, new) }, enabled = !isLoading && current.isNotBlank() && new == confirm, modifier = Modifier.fillMaxWidth()) {
-                if (isLoading) CircularProgressIndicator(Modifier.size(20.dp)) else Text("Cập nhật")
+                if (isLoading) CircularProgressIndicator(Modifier.size(20.dp)) else Text(t("update"))
             }
         }
     }

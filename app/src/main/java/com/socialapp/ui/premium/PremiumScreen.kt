@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.socialapp.ui.home.FeedViewModel
+import com.socialapp.utils.t
 
 @Composable
 fun PremiumScreen(
@@ -44,11 +45,11 @@ fun PremiumScreen(
             ) {
                 Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(100.dp), tint = Color(0xFFFFD700))
                 Spacer(Modifier.height(24.dp))
-                Text("NÂNG CẤP THÀNH CÔNG!", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Text("Giờ đây bạn đã là hội viên Premium.", color = Color.Gray, modifier = Modifier.padding(top = 8.dp))
+                Text(t("success"), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("Hội viên Premium đã kích hoạt.", color = Color.Gray, modifier = Modifier.padding(top = 8.dp))
                 Spacer(Modifier.height(40.dp))
                 Button(onClick = onBack, colors = ButtonDefaults.buttonColors(containerColor = Color.White)) {
-                    Text("BẮT ĐẦU NGAY", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text(t("close"), color = Color.Black, fontWeight = FontWeight.Bold)
                 }
             }
         } else {
@@ -63,17 +64,17 @@ fun PremiumScreen(
                 Icon(Icons.Default.WorkspacePremium, null, modifier = Modifier.size(80.dp), tint = Color(0xFFFFD700))
                 Text("GymHub Premium", fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFFFFD700))
                 Text(
-                    if (isAlreadyPremium) "Bạn đang tận hưởng đặc quyền Premium" else "Bứt phá giới hạn tập luyện của bạn",
+                    if (isAlreadyPremium) "Premium Member" else "Bứt phá giới hạn của bạn",
                     color = Color.Gray,
                     fontSize = 14.sp
                 )
 
                 Spacer(Modifier.height(40.dp))
 
-                BenefitRow("Đăng bài không giới hạn", "Tự do chia sẻ hành trình không lo giới hạn.")
-                BenefitRow("Lịch tập AI cá nhân", "Gemini AI thiết kế lịch tập dựa trên chỉ số PR.")
-                BenefitRow("Huy hiệu vương miện", "Nổi bật hơn trong cộng đồng với biểu tượng Gold.")
-                BenefitRow("Không quảng cáo", "Trải nghiệm mượt mà, tập trung vào mục tiêu.")
+                BenefitRow("Unlimited Posts", "Share your journey without limits.")
+                BenefitRow("AI Workout Coach", "Gemini AI designs plans based on your PRs.")
+                BenefitRow("Golden Badge", "Stand out in the community.")
+                BenefitRow("Ad-Free", "Smooth experience, focus on goals.")
 
                 Spacer(Modifier.weight(1f))
 
@@ -86,10 +87,9 @@ fun PremiumScreen(
                         if (isAlreadyPremium) {
                             Icon(Icons.Default.Verified, null, tint = Color(0xFFFFD700), modifier = Modifier.size(48.dp))
                             Spacer(Modifier.height(8.dp))
-                            Text("ĐÃ KÍCH HOẠT", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                            Text("Cảm ơn bạn đã ủng hộ GymHub!", color = Color.Gray, fontSize = 12.sp)
+                            Text("ACTIVE", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                         } else {
-                            Text("GÓI TRỌN ĐỜI", color = Color(0xFFFFD700), fontWeight = FontWeight.Bold)
+                            Text("LIFETIME PASS", color = Color(0xFFFFD700), fontWeight = FontWeight.Bold)
                             Text("199.000đ", fontSize = 36.sp, fontWeight = FontWeight.Black, color = Color.White)
                             Spacer(Modifier.height(16.dp))
                             Button(
@@ -100,7 +100,7 @@ fun PremiumScreen(
                                 enabled = !state.isLoading
                             ) {
                                 if (state.isLoading) CircularProgressIndicator(Modifier.size(24.dp), color = Color.Black)
-                                else Text("NÂNG CẤP NGAY", fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 16.sp)
+                                else Text("UPGRADE NOW", fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 16.sp)
                             }
                         }
                     }
