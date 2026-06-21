@@ -566,14 +566,15 @@ class SocialRepository {
             .sortedByDescending { it.created_at }
     }
 
-    suspend fun createGroupPost(groupId: String, content: String, imageUrl: String = ""): Result<Unit> = runCatching {
+    // Cập nhật tham sốimageUrl -> imageUrls (List)
+    suspend fun createGroupPost(groupId: String, content: String, imageUrls: List<String> = emptyList()): Result<Unit> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
         val docRef = db.collection("posts").document()
         val post = Post(
             id = docRef.id,
             user_id = uid,
             content = content,
-            image_url = imageUrl,
+            image_urls = imageUrls,
             created_at = Timestamp.now(),
             group_id = groupId,
             status = "pending"

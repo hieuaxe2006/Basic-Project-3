@@ -274,7 +274,9 @@ class FeedViewModel(application: Application) : AndroidViewModel(application) {
     fun sharePost(post: Post, friend: User) {
         viewModelScope.launch {
             state = state.copy(isSharing = true, shareSuccess = null)
-            val shareContent = "Chia sẻ bài viết:\n${post.content}\n${post.image_url}".trim()
+            // Ghép link danh sách ảnh
+            val imgs = post.image_urls.joinToString("\n")
+            val shareContent = "Chia sẻ bài viết:\n${post.content}\n$imgs".trim()
             chatRepo.sendMessage(friend.id, shareContent).onSuccess { state = state.copy(isSharing = false, shareSuccess = "Đã gửi đến ${friend.username}") }.onFailure { state = state.copy(isSharing = false, error = it.message) }
         }
     }

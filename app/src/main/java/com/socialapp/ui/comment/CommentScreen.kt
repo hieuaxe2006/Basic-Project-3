@@ -219,10 +219,11 @@ private fun PostHeaderView(
                 Text(post.content, style = MaterialTheme.typography.bodyLarge)
             }
 
-            if (post.image_url.isNotBlank()) {
+            // Cập nhật: Hiện ảnh đầu tiên của danh sách ảnh
+            if (post.image_urls.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
                 AsyncImage(
-                    model = post.image_url,
+                    model = post.image_urls.first(),
                     contentDescription = null,
                     modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp).clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Crop

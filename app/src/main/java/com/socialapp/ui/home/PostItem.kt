@@ -4,6 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -61,16 +63,11 @@ fun PostItem(
     if (showUnfollowDialog) {
         AlertDialog(
             onDismissRequest = { showUnfollowDialog = false },
-            title = { Text(t("logout_confirm_title")) }, // Tận dụng key tương tự cho xác nhận
-            text = { Text(t("unfollow_confirm")) },
+            title = { Text(t("logout_confirm_title")) },
+            text = { Text(t("unfollow_confirm") ?: "Bạn có chắc chắn muốn bỏ theo dõi?") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        showUnfollowDialog = false
-                        onFollow()
-                    }
-                ) {
-                    Text(t("agree"), color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = { showUnfollowDialog = false; onFollow() }) {
+                    Text(t("agree") ?: "Đồng ý", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
@@ -106,13 +103,7 @@ fun PostItem(
                                     color = if (isFollowing) Color.Gray else MaterialTheme.colorScheme.primary,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.clickable {
-                                        if (isFollowing) {
-                                            showUnfollowDialog = true
-                                        } else {
-                                            onFollow()
-                                        }
-                                    }
+                                    modifier = Modifier.clickable { if (isFollowing) showUnfollowDialog = true else onFollow() }
                                 )
                             }
                         }
@@ -122,7 +113,7 @@ fun PostItem(
                             if (isOwnPost) {
                                 Spacer(Modifier.width(6.dp))
                                 val (statusText, statusColor) = when(post.status) {
-                                    "approved" -> t("active_now") to Color(0xFF4CAF50) // Dùng tạm key
+                                    "approved" -> (t("active_now") ?: "Đã duyệt") to Color(0xFF4CAF50)
                                     "rejected" -> "Rejected" to Color(0xFFF44336)
                                     else -> t("post_status_pending") to Color(0xFFEF6C00)
                                 }
@@ -154,31 +145,19 @@ fun PostItem(
                     IconButton(onClick = { showMenu = true }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Settings", tint = Color.Gray)
                     }
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                         if (isOwnPost) {
                             DropdownMenuItem(
                                 text = { Text(if (post.is_private) t("public") else t("private")) },
-                                onClick = {
-                                    showMenu = false
-                                    onUpdateVisibility(!post.is_private)
-                                }
+                                onClick = { showMenu = false; onUpdateVisibility(!post.is_private) }
                             )
                             DropdownMenuItem(
-                                text = { Text(t("comments")) },
-                                onClick = {
-                                    showMenu = false
-                                    onUpdateCommentsDisabled(!post.comments_disabled)
-                                }
+                                text = { Text("Cài đặt bình luận") },
+                                onClick = { showMenu = false; onUpdateCommentsDisabled(!post.comments_disabled) }
                             )
                             DropdownMenuItem(
-                                text = { Text(t("close"), color = Color.Red) }, // Dùng key close/delete
-                                onClick = {
-                                    showMenu = false
-                                    onDeletePost()
-                                }
+                                text = { Text("Xóa bài", color = Color.Red) },
+                                onClick = { showMenu = false; onDeletePost() }
                             )
                         } else {
                             DropdownMenuItem(
@@ -203,9 +182,49 @@ fun PostItem(
                 WorkoutLogBlock(log = post.code_snippet, workoutType = post.language)
             }
 
-            if (post.image_url.isNotBlank()) {
+            // PHẦN HIỂN THỊ NHIỀU ẢNH (CAROUSEL / PAGER)
+            if (post.image_urls.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
-                AsyncImage(model = post.image_url, contentDescription = null, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)))
+
+                // Khởi tạo pager state
+                val pagerState = rememberPagerState(pageCount = { post.image_urls.size })
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(350.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                    ) { pageIndex ->
+                        AsyncImage(
+                            model = post.image_urls[pageIndex],
+                            contentDescription = "Post image $pageIndex",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+
+                    // Indicator (Dấu chấm) chỉ hiện nếu có từ 2 ảnh trở lên
+                    if (post.image_urls.size > 1) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            repeat(post.image_urls.size) { iteration ->
+                                val color = if (pagerState.currentPage == iteration)
+                                    MaterialTheme.colorScheme.primary else Color.LightGray
+                                Box(
+                                    modifier = Modifier
+                                        .padding(2.dp)
+                                        .clip(CircleShape)
+                                        .background(color)
+                                        .size(6.dp)
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
@@ -216,7 +235,7 @@ fun PostItem(
                     Text("${post.comment_count}", fontSize = 13.sp)
                 } else {
                     Spacer(Modifier.width(16.dp))
-                    Text(t("no_posts"), fontSize = 12.sp, color = Color.Gray, modifier = Modifier.align(Alignment.CenterVertically))
+                    Text("Bình luận bị tắt", fontSize = 12.sp, color = Color.Gray, modifier = Modifier.align(Alignment.CenterVertically))
                 }
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onSave) { Icon(if (isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder, null, tint = if (isSaved) Color.Blue else Color.Gray) }

@@ -15,7 +15,7 @@ class PostRepository {
 
     suspend fun createPost(
         content: String,
-        imageBase64: String?,
+        imagesBase64: List<String>, // Nhận vào danh sách Base64
         tags: List<String> = emptyList(),
         backgroundColor: String = "",
         codeSnippet: String = "",
@@ -24,7 +24,6 @@ class PostRepository {
     ): Result<Unit> = runCatching {
         val uid = currentUid ?: throw Exception("Not logged in")
 
-        // Kiểm tra quyền Premium và giới hạn bài đăng
         val userDoc = db.collection("users").document(uid).get().await()
         val isPremium = userDoc.getBoolean("is_premium") ?: false
 
@@ -33,16 +32,16 @@ class PostRepository {
                 .whereEqualTo("user_id", uid)
                 .get()
                 .await()
-
-            // Giới hạn 5 bài cho tài khoản thường
             if (postsQuery.size() >= 5) {
                 throw Exception("Bạn đã đạt giới hạn 5 bài đăng cho tài khoản miễn phí. Vui lòng nâng cấp Premium để đăng bài không giới hạn!")
             }
         }
 
-        var imageUrl = ""
-        if (!imageBase64.isNullOrBlank()) {
-            imageUrl = ImgBBApi.uploadImage(imageBase64).getOrThrow()
+        // Upload tất cả ảnh lên ImgBB
+        val uploadedUrls = mutableListOf<String>()
+        imagesBase64.forEach { base64 ->
+            val url = ImgBBApi.uploadImage(base64).getOrThrow()
+            uploadedUrls.add(url)
         }
 
         val docRef = db.collection("posts").document()
@@ -50,7 +49,7 @@ class PostRepository {
             id = docRef.id,
             user_id = uid,
             content = content,
-            image_url = imageUrl,
+            image_urls = uploadedUrls, // Lưu danh sách URL
             code_snippet = codeSnippet,
             language = language,
             tagged_user_ids = taggedUserIds,

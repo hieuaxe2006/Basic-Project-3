@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.socialapp.ui.chat.UserAvatar
 import com.socialapp.utils.t
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -54,8 +56,8 @@ fun CreatePostScreen(
     val scrollState = rememberScrollState()
     val domains = listOf("Workout", "Nutrition", "Supplements", "Transformation", "Motivation", "Q&A")
 
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        viewModel.setImageUri(uri)
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+        viewModel.addImages(uris)
     }
 
     LaunchedEffect(state.isSuccess) {
@@ -73,11 +75,8 @@ fun CreatePostScreen(
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
                 actions = {
                     Button(onClick = { viewModel.createPost(content, context) }, enabled = !state.isLoading) {
-                        if (state.isLoading) {
-                            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
-                        } else {
-                            Text(t("post_btn"))
-                        }
+                        if (state.isLoading) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White)
+                        else Text(t("post_btn"))
                     }
                 }
             )
@@ -85,15 +84,23 @@ fun CreatePostScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).background(MaterialTheme.colorScheme.surface)) {
             Column(modifier = Modifier.weight(1f).verticalScroll(scrollState).padding(16.dp)) {
-                // Header
+                // Header người dùng - CẬP NHẬT: Lấy thông tin từ state.currentUser
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(modifier = Modifier.size(44.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-                        Box(contentAlignment = Alignment.Center) { Text("U") }
+                    val user = state.currentUser
+                    if (user != null) {
+                        UserAvatar(user = user, size = 44.dp)
+                    } else {
+                        Surface(modifier = Modifier.size(44.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+                            Box(contentAlignment = Alignment.Center) { CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp) }
+                        }
                     }
+
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("User", fontWeight = FontWeight.Bold)
+                            // HIỂN THỊ TÊN THẬT CỦA USER
+                            Text(user?.username ?: "Loading...", fontWeight = FontWeight.Bold)
+
                             if (state.selectedTaggedUsers.isNotEmpty()) {
                                 Text(" cùng với ", fontSize = 12.sp)
                                 Text("${state.selectedTaggedUsers[0].username}${if(state.selectedTaggedUsers.size > 1) " và ${state.selectedTaggedUsers.size-1} người khác" else ""}", fontWeight = FontWeight.Bold, color = Color(0xFF1877F2), fontSize = 12.sp)
@@ -104,7 +111,13 @@ fun CreatePostScreen(
                 }
 
                 Spacer(Modifier.height(16.dp))
-                TextField(value = content, onValueChange = { content = it }, placeholder = { Text(t("quick_post_hint")) }, modifier = Modifier.fillMaxWidth(), colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent))
+                TextField(
+                    value = content,
+                    onValueChange = { content = it },
+                    placeholder = { Text(t("quick_post_hint")) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent)
+                )
 
                 state.error?.let {
                     Card(
@@ -237,7 +250,34 @@ fun CreatePostScreen(
                     }
                 }
 
-                state.imageUri?.let { AsyncImage(model = it, contentDescription = null, modifier = Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(8.dp))) }
+                if (state.selectedImages.isNotEmpty()) {
+                    Spacer(Modifier.height(16.dp))
+                    Text("Ảnh đã chọn (${state.selectedImages.size})", style = MaterialTheme.typography.labelMedium)
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(state.selectedImages) { uri ->
+                            Box(modifier = Modifier.size(120.dp)) {
+                                AsyncImage(
+                                    model = uri,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                                IconButton(
+                                    onClick = { viewModel.removeImage(uri) },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(24.dp)
+                                        .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                                ) {
+                                    Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                }
+                            }
+                        }
+                    }
+                }
 
                 Spacer(Modifier.height(16.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
