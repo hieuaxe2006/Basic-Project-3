@@ -1,12 +1,12 @@
 package com.socialapp.data.model
 
-import com.google.firebase.Timestamp // THIẾU DÒNG NÀY SẼ GÂY RA 168 LỖI
+import com.google.firebase.Timestamp
 
 data class Post(
     val id: String = "",
     val user_id: String = "",
     val content: String = "",
-    val image_url: String = "",
+    val image_urls: List<String> = emptyList(), // Số nhiều
     val code_snippet: String = "",
     val language: String = "",
     val tagged_user_ids: List<String> = emptyList(),

@@ -12,6 +12,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -42,6 +44,7 @@ import com.socialapp.data.model.User
 
 import com.socialapp.utils.t
 import com.socialapp.ui.home.shimmerBrush
+import com.socialapp.ui.home.formatRelativeTime
 
 @Composable
 fun ProfileShimmerSkeleton(brush: androidx.compose.ui.graphics.Brush) {
@@ -287,7 +290,7 @@ fun ProfileScreen(
 
         AlertDialog(
             onDismissRequest = { showMetricsDialog = false },
-            title = { Text(t("gym_metrics_title")) },
+            title = { Text(t("Gymetric")) },
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
@@ -509,7 +512,7 @@ private fun ProfileContent(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = t("gym_metrics_title"),
+                                    text = t("Gym metric"),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp,
                                     color = MaterialTheme.colorScheme.primary
@@ -557,11 +560,11 @@ private fun ProfileContent(
                                     if (viewModel.state.isGeneratingWorkout) {
                                         CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
                                         Spacer(Modifier.width(8.dp))
-                                        Text(t("ai_analyzing"), color = Color.White)
+                                        Text(t("AI analyzing"), color = Color.White)
                                     } else {
                                         Icon(Icons.Default.AutoAwesome, null, tint = Color.Black)
                                         Spacer(Modifier.width(8.dp))
-                                        Text(t("ai_workout_btn"), color = Color.Black, fontWeight = FontWeight.Bold)
+                                        Text(t("AI workout"), color = Color.Black, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -579,7 +582,7 @@ private fun ProfileContent(
                         ) {
                             Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text(t("edit_profile"), fontWeight = FontWeight.Bold)
+                            Text(t("Edit profile"), fontWeight = FontWeight.Bold)
                         }
                     } else {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -685,32 +688,79 @@ private fun StatItem(count: String, label: String, onClick: () -> Unit) {
 private fun PostThumbnail(post: Post, onShareClick: () -> Unit) {
     Surface(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    formatRelativeTime(post.created_at),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onShareClick, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.Share, null, modifier = Modifier.size(18.dp))
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
             Text(
                 post.content,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
-            if (post.image_url.isNotBlank()) {
+
+            // CẬP NHẬT: Hiển thị slide nhiều ảnh thay vì chỉ hiện 1 ảnh
+            if (post.image_urls.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
-                AsyncImage(
-                    model = post.image_url,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp).clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop
-                )
+
+                val pagerState = rememberPagerState(pageCount = { post.image_urls.size })
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                    ) { pageIndex ->
+                        AsyncImage(
+                            model = post.image_urls[pageIndex],
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+
+                    // Indicator chấm tròn nếu có nhiều hơn 1 ảnh
+                    if (post.image_urls.size > 1) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            repeat(post.image_urls.size) { iteration ->
+                                val color = if (pagerState.currentPage == iteration)
+                                    MaterialTheme.colorScheme.primary else Color.LightGray
+                                Box(
+                                    modifier = Modifier
+                                        .padding(2.dp)
+                                        .clip(CircleShape)
+                                        .background(color)
+                                        .size(6.dp)
+                                )
+                            }
+                        }
+                    }
+                }
             }
+
             Spacer(Modifier.height(12.dp))
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Favorite, null, modifier = Modifier.size(16.dp), tint = Color.Red)
                 Text(" ${post.like_count}", fontSize = 13.sp)
                 Spacer(Modifier.width(16.dp))
                 Icon(Icons.Outlined.ChatBubbleOutline, null, modifier = Modifier.size(16.dp))
                 Text(" ${post.comment_count}", fontSize = 13.sp)
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick = onShareClick, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Share, null, modifier = Modifier.size(18.dp))
-                }
             }
         }
     }
@@ -733,7 +783,7 @@ private fun EditProfileContent(
     var trainingRegime by remember(user) { mutableStateOf(user.trainingRegime) }
 
     Column(modifier = modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState())) {
-        Text(t("edit_profile"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(t("Edit profile"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
         OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(16.dp))
@@ -784,7 +834,7 @@ private fun ShareSheetContent(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it; onSearch(it) },
-            placeholder = { Text(t("search_friends_hint")) },
+            placeholder = { Text(t("Search friends")) },
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = { Icon(Icons.Default.Search, null) },
             shape = RoundedCornerShape(24.dp)
@@ -844,18 +894,18 @@ private fun ChangePasswordContent(isLoading: Boolean, success: Boolean, error: S
     var new by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }
     Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(t("change_password"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(t("Change password"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
         if (success) {
             Icon(Icons.Default.CheckCircle, null, tint = Color.Green, modifier = Modifier.size(64.dp))
             Text(t("success"), modifier = Modifier.padding(top = 16.dp))
             Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth().padding(top = 24.dp)) { Text(t("close")) }
         } else {
-            OutlinedTextField(value = current, onValueChange = { current = it }, label = { Text(t("current_password")) }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = current, onValueChange = { current = it }, label = { Text(t("Current password")) }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
-            OutlinedTextField(value = new, onValueChange = { new = it }, label = { Text(t("new_password")) }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = new, onValueChange = { new = it }, label = { Text(t("New password")) }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
-            OutlinedTextField(value = confirm, onValueChange = { confirm = it }, label = { Text(t("confirm_password")) }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = confirm, onValueChange = { confirm = it }, label = { Text(t("Confirm password")) }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
             if (error != null) Text(error, color = Color.Red, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(32.dp))
             Button(onClick = { onSubmit(current, new) }, enabled = !isLoading && current.isNotBlank() && new == confirm, modifier = Modifier.fillMaxWidth()) {

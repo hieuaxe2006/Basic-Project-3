@@ -218,7 +218,11 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     fun sharePost(post: Post, friend: User) {
         viewModelScope.launch {
             state = state.copy(isSharing = true, shareSuccess = null)
-            val shareContent = "Chia sẻ bài viết:\n${post.content}\n${post.image_url}".trim()
+
+            // CẬP NHẬT: Ghép danh sách URL ảnh thành một chuỗi văn bản để gửi qua tin nhắn
+            val imageUrlsString = post.image_urls.joinToString(separator = "\n")
+            val shareContent = "Chia sẻ bài viết:\n${post.content}\n$imageUrlsString".trim()
+
             chatRepo.sendMessage(friend.id, shareContent)
                 .onSuccess {
                     state = state.copy(isSharing = false, shareSuccess = "Đã gửi đến ${friend.username}")

@@ -44,12 +44,12 @@ fun SettingsScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
-            Text(t("basic_settings"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Text(t("Basic setting"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
 
             // Dark Mode
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(t("dark_mode"), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                Text(t("Dark mode"), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                 Switch(checked = viewModel.isDarkMode, onCheckedChange = { viewModel.toggleDarkMode(it) })
             }
 
@@ -70,7 +70,7 @@ fun SettingsScreen(
 
             // Private Account
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(t("private_account"), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                Text(t("Private account"), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                 Switch(checked = viewModel.privateAccount, onCheckedChange = { viewModel.togglePrivateAccount(it) })
             }
 

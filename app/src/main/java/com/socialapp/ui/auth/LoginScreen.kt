@@ -51,7 +51,7 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = t("login_title"),
+                text = t("Login"),
                 style = MaterialTheme.typography.displayMedium,
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
@@ -59,7 +59,7 @@ fun LoginScreen(
             )
 
             Text(
-                text = t("login_subtitle"),
+                text = t("GymHub"),
                 style = MaterialTheme.typography.bodyLarge,
                 color = Color.White.copy(alpha = 0.8f),
                 modifier = Modifier.padding(bottom = 32.dp)
@@ -75,7 +75,7 @@ fun LoginScreen(
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
-                        placeholder = { Text(t("email_hint")) },
+                        placeholder = { Text(t("Email")) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -87,7 +87,7 @@ fun LoginScreen(
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        placeholder = { Text(t("password_hint")) },
+                        placeholder = { Text(t("Password")) },
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         singleLine = true,
@@ -116,7 +116,7 @@ fun LoginScreen(
                         if (state.isLoading) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
                         } else {
-                            Text(t("login_btn"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(t("Login"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
                     }
 
@@ -124,7 +124,7 @@ fun LoginScreen(
                         onClick = { },
                         modifier = Modifier.align(Alignment.CenterHorizontally)
                     ) {
-                        Text(t("forgot_password"), color = MaterialTheme.colorScheme.primary)
+                        Text(t("Forgot password"), color = MaterialTheme.colorScheme.primary)
                     }
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -135,7 +135,7 @@ fun LoginScreen(
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF42B72A))
                     ) {
-                        Text(t("create_account_btn"), fontWeight = FontWeight.Bold)
+                        Text(t("Create account"), fontWeight = FontWeight.Bold)
                     }
                 }
             }
